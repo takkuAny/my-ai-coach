@@ -80,8 +80,8 @@ export function RecordForm({
       alert('Failed to retrieve user information.')
       return
     }
-    // 'existingCategory' is reassigned below, so use 'let'
-    let { data: existingCategory, error: categoryFetchError } = await supabase
+    let existingCategory
+    const { error: categoryFetchError, data } = await supabase
       .from('categories')
       .select('*')
       .eq('name', trimmedCategory)
