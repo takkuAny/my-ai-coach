@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   const { data: usageData, error: usageError } = await supabase
     .from('api_usage')
     .select('usage_count')
-    .not('deleted_at', 'is', null)
+    .is('deleted_at', null)
     .not('usage_count', 'is', null);
 
   if (usageError) {

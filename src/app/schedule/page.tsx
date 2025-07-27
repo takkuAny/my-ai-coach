@@ -74,7 +74,8 @@ export default function Page() {
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [tab, setTab] = useState<'todo' | '24h'>('24h');
-  const is24HMode = true;
+
+  const is24HMode = tab === '24h';
   const FullCalendar = dynamic(() => import('@fullcalendar/react'), { ssr: false });
 
   const fetchSubjects = async (): Promise<Subject[]> => {
@@ -143,16 +144,24 @@ export default function Page() {
   }, [fetchEvents]);
 
   const handleDateClick = (arg: DateClickArg) => {
-    const clickedDate = new Date(arg.date);
-    const hours = String(clickedDate.getHours()).padStart(2, '0');
-    const minutes = String(clickedDate.getMinutes()).padStart(2, '0');
-    const timeStr = `${hours}:${minutes}`;
-
     setSelectedDate(arg.dateStr);
-    setSelectedStartTime(timeStr);
-    setSelectedEndTime(undefined);
+
+    // ToDoタブまたは all-dayクリックの場合は時刻を空白に
+    if (tab === 'todo' || arg.allDay) {
+      setSelectedStartTime('');
+      setSelectedEndTime('');
+    } else {
+      const clickedDate = new Date(arg.date);
+      const hours = String(clickedDate.getHours()).padStart(2, '0');
+      const minutes = String(clickedDate.getMinutes()).padStart(2, '0');
+      const timeStr = `${hours}:${minutes}`;
+      setSelectedStartTime(timeStr);
+      setSelectedEndTime(undefined);
+    }
+
     setIsNewModalOpen(true);
   };
+
 
   const handleEventDrop = async (info: EventDropArg) => {
     const { event } = info;
@@ -302,15 +311,7 @@ export default function Page() {
             if (!selectedEvent) return;
             const { subjectId, date, pages, items, memo, startTime, endTime } = form;
 
-            const updatePayload: {
-              subject_id: string;
-              date: string;
-              planned_pages: number | null;
-              planned_items: number | null;
-              memo: string;
-              start_time: string | null;
-              end_time: string | null;
-            } = {
+            const updatePayload = {
               subject_id: subjectId,
               date,
               planned_pages: pages ?? null,

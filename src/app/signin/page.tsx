@@ -1,103 +1,115 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { FcGoogle } from 'react-icons/fc';
-import { FaGithub } from 'react-icons/fa';
-import { supabase } from '@/lib/supabase/client';
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { FcGoogle } from 'react-icons/fc'
+import { FaGithub } from 'react-icons/fa'
+import { supabase } from '@/lib/supabase/client'
 
 function getOrGenerateClientId(): string {
-  let id = localStorage.getItem('client_id');
+  let id = localStorage.getItem('client_id')
   if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem('client_id', id);
+    id = crypto.randomUUID()
+    localStorage.setItem('client_id', id)
   }
-  return id;
+  return id
 }
 
 export default function SignInPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
+  const router = useRouter()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [isSignUp, setIsSignUp] = useState(false)
 
   useEffect(() => {
-    let hasRun = false;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        const user = session.user
 
-    const registerUserData = async () => {
-      if (hasRun) return;
-      hasRun = true;
+        // プロフィール作成（初回のみ）
+        const { data: existing } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', user.id)
+          .single()
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) return;
+        if (!existing) {
+          await supabase.from('profiles').insert({
+            id: user.id,
+            email: user.email,
+            name: user.user_metadata.full_name ?? '',
+            avatar_url: user.user_metadata.avatar_url ?? '',
+          })
+        }
 
-      // Insert profile if not exists
-      const { data: existing } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', user.id)
-        .single();
+        // DEMOキーをUpsert
+        const clientId = getOrGenerateClientId()
+        await supabase.from('api_keys').upsert(
+          {
+            user_id: user.id,
+            provider: 'OpenAI',
+            api_key: 'DEMO_KEY_USED_BY_ALL',
+            is_demo: true,
+            mac_address: clientId,
+            created_by: user.id,
+          },
+          {
+            onConflict: 'user_id,is_demo',
+          }
+        )
 
-      if (!existing) {
-        await supabase.from('profiles').insert({
-          id: user.id,
-          email: user.email,
-          name: user.user_metadata.full_name ?? '',
-          avatar_url: user.user_metadata.avatar_url ?? '',
-        });
+        // ✅ ダッシュボードへ遷移（router.pushが効かない場合も考慮）
+        try {
+          router.push('/dashboard')
+        } catch {
+          window.location.href = '/dashboard'
+        }
       }
+    })
 
-      // Insert demo API key
-      const clientId = getOrGenerateClientId();
-      await supabase.from('api_keys').upsert({
-        user_id: user.id,
-        provider: 'OpenAI',
-        api_key: 'DEMO_KEY_USED_BY_ALL',
-        is_demo: true,
-        mac_address: clientId,
-        created_by: user.id,
-      }, {
-        onConflict: 'user_id,is_demo',
-      });
-
-      router.push('/dashboard');
-    };
-
-    registerUserData();
-  }, [router]);
+    return () => subscription.unsubscribe()
+  }, [router])
 
   const handleEmailAuth = async () => {
-    if (!email || !password) return alert('Please enter both email and password.');
-
-    let result;
-    if (isSignUp) {
-      result = await supabase.auth.signUp({ email, password });
-    } else {
-      result = await supabase.auth.signInWithPassword({ email, password });
+    if (!email || !password) {
+      return alert('Please enter both email and password.')
     }
+
+    const result = isSignUp
+      ? await supabase.auth.signUp({ email, password })
+      : await supabase.auth.signInWithPassword({ email, password })
 
     if (result.error) {
-      alert(result.error.message);
+      alert(result.error.message)
     } else {
-      alert(isSignUp
-        ? 'Sign-up successful! Please check your email to verify.'
-        : 'Login successful!');
+      alert(
+        isSignUp
+          ? 'Sign-up successful! Please check your email to verify.'
+          : 'Login successful!'
+      )
     }
-  };
+  }
 
-  const handleOAuth = async (provider: 'google' | 'github') => {
+  const handleOAuth = async (provider: 'google') => {
+    const redirectUrl =
+      process.env.NEXT_PUBLIC_REDIRECT_URL || `${window.location.origin}/signin`
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${location.origin}/signin`,
+        redirectTo: redirectUrl,
       },
-    });
-    if (error) alert('OAuth error: ' + error.message);
-  };
+    })
+
+    if (error) {
+      alert('OAuth error: ' + error.message)
+    }
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-muted">
@@ -127,14 +139,20 @@ export default function SignInPage() {
             {isSignUp ? (
               <>
                 Already have an account?{' '}
-                <button className="text-blue-600 underline" onClick={() => setIsSignUp(false)}>
+                <button
+                  className="text-blue-600 underline"
+                  onClick={() => setIsSignUp(false)}
+                >
                   Sign In
                 </button>
               </>
             ) : (
               <>
                 New here?{' '}
-                <button className="text-blue-600 underline" onClick={() => setIsSignUp(true)}>
+                <button
+                  className="text-blue-600 underline"
+                  onClick={() => setIsSignUp(true)}
+                >
                   Sign Up
                 </button>
               </>
@@ -142,15 +160,16 @@ export default function SignInPage() {
           </div>
 
           <div className="border-t pt-4 space-y-2">
-            <Button variant="outline" className="w-full" onClick={() => handleOAuth('google')}>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => handleOAuth('google')}
+            >
               <FcGoogle className="mr-2 h-4 w-4" /> Sign in with Google
-            </Button>
-            <Button variant="outline" className="w-full" onClick={() => handleOAuth('github')}>
-              <FaGithub className="mr-2 h-4 w-4" /> Sign in with GitHub
             </Button>
           </div>
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
