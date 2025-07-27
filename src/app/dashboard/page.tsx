@@ -28,7 +28,7 @@ export default function DashboardPage() {
       } = await supabase.auth.getUser()
 
       if (userError || !user) {
-        console.error('ユーザー取得エラー:', userError)
+        console.error('Failed to get user:', userError)
         return
       }
 
@@ -54,7 +54,7 @@ export default function DashboardPage() {
         .is('deleted_at', null)
 
       if (error || !data) {
-        console.error('Error fetching tasks:', error)
+        console.error('Error fetching study data:', error)
         return
       }
 
@@ -104,10 +104,8 @@ export default function DashboardPage() {
         .is('deleted_at', null)
         .order('date', { ascending: true })
 
-        console.log(data)
-        console.log('今日は',today)
       if (error) {
-        console.error('ToDo取得エラー:', error)
+        console.error('Error fetching ToDo tasks:', error)
         return
       }
 
@@ -119,13 +117,13 @@ export default function DashboardPage() {
 
   return (
     <main className="max-w-4xl mx-auto p-6 space-y-8">
-      <h1 className="text-2xl font-bold">📊 ダッシュボード</h1>
+      <h1 className="text-2xl font-bold">📊 Dashboard</h1>
 
-      {/* ✅ ToDo */}
+      {/* ✅ Today's ToDo Tasks */}
       <section>
-        <h2 className="text-lg font-semibold mb-2">✅ 今日の予定タスク（ToDo）</h2>
+        <h2 className="text-lg font-semibold mb-2">✅ Today's ToDo Tasks</h2>
         {todoTasks.length === 0 ? (
-          <p className="text-gray-500">📭 今日の予定はまだありません。</p>
+          <p className="text-gray-500">📭 No tasks scheduled for today.</p>
         ) : (
           <ul className="space-y-2">
             {todoTasks.map((todo) => (
@@ -137,55 +135,55 @@ export default function DashboardPage() {
                         hour: '2-digit',
                         minute: '2-digit',
                       })
-                    : '未定'}
+                    : 'Not set'}
                 </div>
-                <div className="font-medium">{todo.subject_name ?? '（未設定）'}</div>
+                <div className="font-medium">{todo.subject_name ?? '(No subject)'}</div>
               </li>
             ))}
           </ul>
         )}
       </section>
 
-      {/* 📌 復習タスク */}
+      {/* 📌 Review Tasks */}
       <section>
-        <h2 className="text-lg font-semibold mb-2">📌 今日の復習タスク</h2>
+        <h2 className="text-lg font-semibold mb-2">📌 Review Tasks for Today</h2>
         {dueTasks.length === 0 ? (
-          <p className="text-gray-500">🔕 今日やるべき復習はありません。</p>
+          <p className="text-gray-500">🔕 No review tasks scheduled for today.</p>
         ) : (
           <ul className="space-y-2">
             {dueTasks.map((task) => (
               <li key={task.id} className="border p-3 rounded shadow-sm">
-                {task.subject_name}（{task.category_name}） - {getReviewLabel(task.attempt_number)}
+                {task.subject_name} ({task.category_name}) - {getReviewLabel(task.attempt_number)}
               </li>
             ))}
           </ul>
         )}
       </section>
 
-      {/* 📈 学習グラフ */}
+      {/* 📈 Study Progress (Graph) */}
       <section>
-        <h2 className="text-lg font-semibold mb-2">📈 学習進捗（直近7日）</h2>
+        <h2 className="text-lg font-semibold mb-2">📈 Study Progress (Last 7 Days)</h2>
         {progressData.length === 0 ? (
-          <p className="text-gray-500">📉 学習記録がありません。</p>
+          <p className="text-gray-500">📉 No study records found.</p>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={progressData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+            <BarChart data={progressData} margin={{ top: 20, right: 30, left: 40, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
-              <YAxis unit="分" />
+              <YAxis unit="min" />
               <Tooltip />
               <Legend />
-              <Bar dataKey="time" name="学習時間" fill="#3b82f6" />
+              <Bar dataKey="time" name="Study Time" fill="#3b82f6" />
             </BarChart>
           </ResponsiveContainer>
         )}
       </section>
 
-      {/* 🧠 AIコメント */}
+      {/* 🧠 AI Comments */}
       <section>
-        <h2 className="text-lg font-semibold mb-2">🧠 AIコメント集（直近）</h2>
+        <h2 className="text-lg font-semibold mb-2">🧠 Recent AI Comments</h2>
         {aiComments.length === 0 ? (
-          <p className="text-gray-500">🤖 コメントはまだありません。</p>
+          <p className="text-gray-500">🤖 No AI comments available.</p>
         ) : (
           <ul className="space-y-2 text-sm text-gray-700">
             {aiComments.map((comment, i) => (

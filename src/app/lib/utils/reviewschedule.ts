@@ -13,12 +13,11 @@ export function isDueForReview(dateStr: string, attempt: number): boolean {
   return reviewDateStr === todayStr;
 }
 
-
 export function getReviewLabel(attempt: number): string {
   return {
-    1: '復習1回目（翌日）',
-    2: '復習2回目（3日後）',
-    3: '復習3回目（7日後）',
-    4: '復習4回目（14日後）',
+    1: 'Review 1 (Next Day)',
+    2: 'Review 2 (In 3 Days)',
+    3: 'Review 3 (In 7 Days)',
+    4: 'Review 4 (In 14 Days)',
   }[attempt] ?? '';
 }

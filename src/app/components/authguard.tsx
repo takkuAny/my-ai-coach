@@ -13,12 +13,12 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading) return;
 
-    // 未ログインなら /signin にリダイレクト
+    // If not logged in and not already on the sign-in page, redirect to /signin
     if (!session && pathname !== "/signin") {
       router.push("/signin");
     }
 
-    // ログイン済み & /signin にいたら /dashboard にリダイレクト
+    // If already logged in and still on /signin, redirect to /dashboard
     if (session && pathname === "/signin") {
       router.push("/dashboard");
     }
@@ -26,8 +26,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (loading) return <Loading />;
 
-  if (pathname === "/signin") return <>{children}</>; // サインインページはガード対象外
-  if (!session) return <Loading />; // 未ログイン状態で他ページへ来た場合、ローディング中にしてリダイレクト待機
+  if (pathname === "/signin") return <>{children}</>; // Allow access to the sign-in page without a session
+  if (!session) return <Loading />; // Show loading while redirecting unauthenticated users
 
   return <>{children}</>;
 }

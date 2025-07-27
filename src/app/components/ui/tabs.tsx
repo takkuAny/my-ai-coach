@@ -5,7 +5,7 @@ import { Slot } from "@radix-ui/react-slot"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
 import { cn } from "@/lib/utils/classnames"
 
-// 元のエクスポート群（そのまま）
+// Original exports
 const Tabs = TabsPrimitive.Root
 
 const TabsList = React.forwardRef<
@@ -53,7 +53,7 @@ const TabsContent = React.forwardRef<
 ))
 TabsContent.displayName = TabsPrimitive.Content.displayName
 
-// ✅ 追加: タブ切り替え用の UI コンポーネント
+// ✅ Added: Custom tab switch UI component (English version)
 interface CustomTabsProps {
   tab: "todo" | "24h"
   setTab: React.Dispatch<React.SetStateAction<"todo" | "24h">>
@@ -63,12 +63,11 @@ const CustomTabs: React.FC<CustomTabsProps> = ({ tab, setTab }) => {
   return (
     <TabsPrimitive.Root value={tab} onValueChange={(value) => setTab(value as "todo" | "24h")}>
       <TabsList>
-        <TabsTrigger value="todo">ToDo形式</TabsTrigger>
-        <TabsTrigger value="24h">24時間形式</TabsTrigger>
+        <TabsTrigger value="todo">To-Do View</TabsTrigger>
+        <TabsTrigger value="24h">24-Hour View</TabsTrigger>
       </TabsList>
     </TabsPrimitive.Root>
   );
 };
-
 
 export { Tabs, TabsList, TabsTrigger, TabsContent, CustomTabs }

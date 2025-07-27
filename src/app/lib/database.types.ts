@@ -3,7 +3,6 @@ export type Json = string | number | boolean | null | { [key: string]: Json } | 
 export type Database = {
   public: {
     Tables: {
-      // 必要に応じて追加
     }
     Views: {
       task_view_with_category: {
@@ -32,6 +31,6 @@ export type Database = {
         }
       }
     }
-    Functions: {} // 必要なら
+    Functions: {} 
   }
 }

@@ -7,7 +7,7 @@ import Loading from '@/components/common/loading'
 import { SupabaseProvider } from '@/lib/supabase/supabase-provider'
 
 export const metadata = {
-  title: '学習AIコーチ',
+  title: 'Learning AI Coach',
   description: 'Supabase + Next.js App',
 }
 
@@ -17,18 +17,26 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="ja">
-      <body>
+    <html lang="en">
+      <body className="h-screen overflow-hidden">
         <SupabaseProvider>
-          <div className="flex min-h-screen">
+          <div className="flex h-full">
+            {/* Sidebar (fixed) */}
             <SidebarNav />
-            <div className="flex-1">
-              <Header />
-              <Suspense fallback={<Loading />}>
-                <AuthGuard>
-                  <main className="p-6">{children}</main>
-                </AuthGuard>
-              </Suspense>
+
+            {/* Main content area (Header + Content) */}
+            <div className="flex flex-col flex-1">
+              {/* Fixed header */}
+              <div className="sticky top-0 z-10">
+                <Header />
+              </div>
+
+              {/* Scrollable content */}
+              <main className="flex-1 overflow-y-auto p-6">
+                <Suspense fallback={<Loading />}>
+                  <AuthGuard>{children}</AuthGuard>
+                </Suspense>
+              </main>
             </div>
           </div>
         </SupabaseProvider>

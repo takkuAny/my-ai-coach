@@ -1,46 +1,81 @@
-// app/api/gpt-comment/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
-import OpenAI from 'openai'
+export async function POST(req: NextRequest) {
+  const supabase = createRouteHandlerClient({ cookies });
+  const { memo } = await req.json();
 
-export const runtime = 'edge' // or remove this line if not using edge runtime
+  if (!memo || typeof memo !== 'string') {
+    return NextResponse.json({ error: 'Memo is missing.' }, { status: 400 });
+  }
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // .env.local に設定必須
-})
+  const MAX_USAGE = Number(process.env.MAX_USAGE_PER_DAY ?? 100);
 
-export async function POST(req: Request): Promise<Response> {
+  //Get total usage_count
+  const { data: usageData, error: usageError } = await supabase
+    .from('api_usage')
+    .select('usage_count')
+    .not('deleted_at', 'is', null)
+    .not('usage_count', 'is', null);
+
+  if (usageError) {
+    console.error('❌ Failed to fetch usage_count:', usageError);
+    return NextResponse.json({ error: 'Failed to retrieve usage count.' }, { status: 500 });
+  }
+
+  const totalUsage = usageData.reduce((sum, row) => sum + (row.usage_count || 0), 0);
+  if (totalUsage >= MAX_USAGE) {
+    return NextResponse.json({ error: 'Daily usage limit reached.' }, { status: 429 });
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json({ error: 'API key is not set.' }, { status: 500 });
+  }
+
   try {
-    const { memo } = await req.json()
+    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are a learning advisor. Based on the study memo, provide a short, positive, and encouraging comment in English (1–2 sentences).',
+          },
+          {
+            role: 'user',
+            content: `Please give feedback on the following study record:\n${memo}`,
+          },
+        ],
+      }),
+    });
 
-    if (!memo || typeof memo !== 'string') {
-      return new Response(JSON.stringify({ comment: '不正な入力です。' }), { status: 400 })
+    if (!openaiRes.ok) {
+      const text = await openaiRes.text();
+      console.error('🔴 OpenAI error:', text);
+      return NextResponse.json({ error: 'Failed to call OpenAI API.' }, { status: 502 });
     }
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content:
-            'あなたは学習アドバイザーです。学習メモをもとに、前向きで簡潔なアドバイスを1〜2文で日本語で返してください。',
-        },
-        {
-          role: 'user',
-          content: `以下の学習記録に対するフィードバックコメントをください:\n${memo}`,
-        },
-      ],
-      temperature: 0.7,
-      stream: false,
-    })
+    const result = await openaiRes.json();
+    const comment = result.choices?.[0]?.message?.content ?? 'Failed to generate AI comment.';
 
-    const comment = response.choices?.[0]?.message?.content ?? 'コメントが生成できませんでした。'
+    //Increment usage_count (global id assumed)
+    await supabase
+      .from('api_usage')
+      .update({ usage_count: totalUsage + 1 })
+      .eq('id', 'global') // Adjust ID as needed
+      .select();
 
-    return Response.json({ comment })
+    return NextResponse.json({ comment });
   } catch (err) {
-    console.error('AIコメント生成エラー:', err)
-    return new Response(
-      JSON.stringify({ comment: 'AIコメントの生成に失敗しました。' }),
-      { status: 500 }
-    )
+    console.error('🔴 Server error:', err);
+    return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
   }
 }

@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectTrigger, SelectValue, SelectItem } from '@/components/ui/select'
 import Image from 'next/image'
 
 export default function SettingsPage() {
@@ -20,7 +19,7 @@ export default function SettingsPage() {
   const [avatarPreview, setAvatarPreview] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // プロフィール読み込み
+  // Load user profile and API key
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -65,18 +64,17 @@ export default function SettingsPage() {
           upsert: true,
           contentType: avatarFile.type,
         })
-        console.error('Upload error:', error)
-        console.log('userId:', userId)
-        console.log('✅ avatarPreview URL:', avatar_url)
+
       if (!error) {
         const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
         avatar_url = data.publicUrl
-        console.log('✅ avatarPreview URL:', avatar_url)
         setAvatarPreview(avatar_url)
+      } else {
+        console.error('Upload error:', error)
       }
     }
 
-    // profiles更新
+    // Update profile
     await supabase
       .from('profiles')
       .update({
@@ -86,21 +84,19 @@ export default function SettingsPage() {
       })
       .eq('id', userId)
 
-    // api_keys upsert
+    // Upsert API key
     if (apiKey) {
       await supabase
         .from('api_keys')
         .upsert({
           user_id: userId,
-          api_key: apiKey,
-          provider: 'OpenAI',
           updated_at: new Date().toISOString(),
           updated_by: userId,
         }, { onConflict: 'user_id' })
     }
 
     setLoading(false)
-    alert('保存しました')
+    alert('Settings saved successfully.')
   }
 
   const handleFileChange = (file: File | null) => {
@@ -113,24 +109,24 @@ export default function SettingsPage() {
 
   return (
     <main className="max-w-xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold">⚙️ 設定</h1>
+      <h1 className="text-2xl font-bold">⚙️ Settings</h1>
 
-      {/* 名前 */}
+      {/* Name */}
       <div className="space-y-2">
-        <Label>名前</Label>
+        <Label>Name</Label>
         <Input
           value={profile.name}
           onChange={(e) => setProfile({ ...profile, name: e.target.value })}
         />
       </div>
 
-      {/* プロフィール画像 */}
+      {/* Avatar */}
       <div className="space-y-2">
-        <Label>プロフィール画像</Label>
+        <Label>Profile Image</Label>
         {avatarPreview && (
           <img
             src={avatarPreview}
-            alt="preview"
+            alt="Preview"
             width={64}
             height={64}
             className="rounded-full"
@@ -143,27 +139,9 @@ export default function SettingsPage() {
         />
       </div>
 
-      {/* テーマ */}
+      {/* API Key */}
       <div className="space-y-2">
-        <Label>テーマ</Label>
-        <Select
-          value={profile.theme}
-          onValueChange={(v) => setProfile({ ...profile, theme: v })}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="テーマ選択" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="system">システム</SelectItem>
-            <SelectItem value="light">ライト</SelectItem>
-            <SelectItem value="dark">ダーク</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* APIキー */}
-      <div className="space-y-2">
-        <Label>APIキー（OpenAI）</Label>
+        <Label>API Key (OpenAI)</Label>
         <Input
           type="password"
           value={apiKey}
@@ -173,7 +151,7 @@ export default function SettingsPage() {
       </div>
 
       <Button onClick={handleSave} disabled={loading}>
-        {loading ? '保存中...' : '保存する'}
+        {loading ? 'Saving...' : 'Save Settings'}
       </Button>
     </main>
   )

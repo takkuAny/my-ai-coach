@@ -70,18 +70,15 @@ export function RecordForm({
     const trimmedCategory = newCategoryName.trim()
 
     if (!trimmedSubject || !trimmedCategory) {
-      alert('学習対象とカテゴリ名を入力してください')
+      alert('Please enter both subject and category names.')
       return
     }
 
-    const {
-      data: userData,
-      error: userError,
-    } = await supabase.auth.getUser()
+    const { data: userData, error: userError } = await supabase.auth.getUser()
     const userId = userData?.user?.id
 
     if (!userId) {
-      alert('ログインユーザー情報の取得に失敗しました')
+      alert('Failed to retrieve user information.')
       return
     }
 
@@ -93,7 +90,7 @@ export function RecordForm({
       .maybeSingle()
 
     if (categoryFetchError && categoryFetchError.code !== 'PGRST116') {
-      alert('カテゴリの検索に失敗しました')
+      alert('Failed to fetch category.')
       return
     }
 
@@ -109,7 +106,7 @@ export function RecordForm({
         .single()
 
       if (categoryInsertError || !inserted) {
-        alert('カテゴリ作成に失敗しました: ' + categoryInsertError?.message)
+        alert('Failed to create category: ' + categoryInsertError?.message)
         return
       }
 
@@ -127,7 +124,7 @@ export function RecordForm({
       .single()
 
     if (subjectInsertError || !newSubject) {
-      alert('学習対象の作成に失敗しました: ' + subjectInsertError?.message)
+      alert('Failed to create subject: ' + subjectInsertError?.message)
       return
     }
 
@@ -139,7 +136,8 @@ export function RecordForm({
   }
 
   return (
-    <form id="record-form"
+    <form
+      id="record-form"
       onSubmit={(e) => {
         e.preventDefault()
         onSubmit({
@@ -155,53 +153,51 @@ export function RecordForm({
       }}
       className="space-y-4"
     >
-      {/* 学習対象選択 */}
+      {/* Subject Selection */}
       <div>
-        <label className="block font-medium mb-1">学習対象</label>
+        <label className="block font-medium mb-1">Subject</label>
         <select
           value={subjectId}
           onChange={(e) => setSubjectId(e.target.value)}
           className="border rounded px-3 py-2 w-full"
           required
         >
-          <option value="">-- 選択してください --</option>
+          <option value="">-- Please select --</option>
           {subjects.map((s) => (
             <option key={s.id} value={s.id}>
-              {s.name}（{s.category?.name ?? 'カテゴリ不明'}）
+              {s.name} ({s.category?.name ?? 'Unknown Category'})
             </option>
           ))}
         </select>
       </div>
 
-      {/* 学習対象＋カテゴリ追加UI */}
+      {/* Add Subject + Category */}
       <div className="bg-gray-100 p-3 rounded space-y-2">
-        <p className="text-sm font-semibold">💡 新しい学習対象とカテゴリを追加</p>
+        <p className="text-sm font-semibold">💡 Add new subject and category</p>
         <input
           type="text"
-          placeholder="学習対象名"
+          placeholder="Subject name"
           value={newSubjectName}
           onChange={(e) => setNewSubjectName(e.target.value)}
           className="border rounded px-3 py-2 w-full"
         />
         <input
           type="text"
-          placeholder="カテゴリ名"
+          placeholder="Category name"
           value={newCategoryName}
           onChange={(e) => setNewCategoryName(e.target.value)}
           className="border rounded px-3 py-2 w-full"
         />
-
-        {/* カラーパレット */}
         <div className="flex flex-wrap gap-2">
           {[
-            '#f87171', // red-400
-            '#fbbf24', // yellow-400
-            '#34d399', // green-400
-            '#60a5fa', // blue-400
-            '#a78bfa', // purple-400
-            '#f472b6', // pink-400
-            '#d1d5db', // gray-300
-            '#999999', // default
+            '#f87171',
+            '#fbbf24',
+            '#34d399',
+            '#60a5fa',
+            '#a78bfa',
+            '#f472b6',
+            '#d1d5db',
+            '#999999',
           ].map((color) => (
             <button
               key={color}
@@ -214,20 +210,20 @@ export function RecordForm({
             />
           ))}
         </div>
-        <p className="text-sm text-gray-500">カテゴリカラーを選択</p>
+        <p className="text-sm text-gray-500">Choose category color</p>
 
         <button
           type="button"
           onClick={handleAddSubject}
           className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
         >
-          学習対象を追加
+          Add Subject
         </button>
       </div>
 
-      {/* 日付 */}
+      {/* Date */}
       <div>
-        <label className="block font-medium mb-1">日付</label>
+        <label className="block font-medium mb-1">Date</label>
         <input
           type="date"
           value={selectedDate}
@@ -237,10 +233,10 @@ export function RecordForm({
         />
       </div>
 
-      {/* 開始/終了時間 */}
+      {/* Start / End Time */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block font-medium mb-1">開始時刻</label>
+          <label className="block font-medium mb-1">Start Time</label>
           <input
             type="time"
             value={startTime}
@@ -250,7 +246,7 @@ export function RecordForm({
           />
         </div>
         <div>
-          <label className="block font-medium mb-1">終了時刻</label>
+          <label className="block font-medium mb-1">End Time</label>
           <input
             type="time"
             value={endTime}
@@ -261,20 +257,9 @@ export function RecordForm({
         </div>
       </div>
 
-      {/* メモ */}
+      {/* Pages and Items */}
       <div>
-        <label className="block font-medium mb-1">メモ</label>
-        <textarea
-          value={memo}
-          onChange={(e) => setMemo(e.target.value)}
-          className="border rounded px-3 py-2 w-full"
-          rows={3}
-        />
-      </div>
-
-      {/* ページ・項目数 */}
-      <div>
-        <label className="block font-medium mb-1">読んだページ数（任意）</label>
+        <label className="block font-medium mb-1">Pages read (optional)</label>
         <input
           type="number"
           min={0}
@@ -285,7 +270,7 @@ export function RecordForm({
       </div>
 
       <div>
-        <label className="block font-medium mb-1">覚えた単語・項目数（任意）</label>
+        <label className="block font-medium mb-1">Words/items memorized (optional)</label>
         <input
           type="number"
           min={0}
@@ -295,25 +280,36 @@ export function RecordForm({
         />
       </div>
 
-      {/* 取り組み回数 */}
+      {/* Attempts */}
       <div>
-        <label className="block font-medium mb-1">取り組み回数</label>
+        <label className="block font-medium mb-1">Attempt count</label>
         <select
           value={attempt}
           onChange={(e) => setAttempt(Number(e.target.value))}
           className="border rounded px-3 py-2 w-full"
         >
-          <option value={1}>1（初回）</option>
-          <option value={2}>2（復習1回目）</option>
-          <option value={3}>3（復習2回目）</option>
-          <option value={4}>4（復習3回目）</option>
+          <option value={1}>1 (First time)</option>
+          <option value={2}>2 (Review 1)</option>
+          <option value={3}>3 (Review 2)</option>
+          <option value={4}>4 (Review 3)</option>
         </select>
       </div>
 
-      {/* AIコメント */}
+      {/* Memo */}
+      <div>
+        <label className="block font-medium mb-1">Memo</label>
+        <textarea
+          value={memo}
+          onChange={(e) => setMemo(e.target.value)}
+          className="border rounded px-3 py-2 w-full"
+          rows={3}
+        />
+      </div>
+
+      {/* AI Comment */}
       {isEditing && (
         <div>
-          <label className="block font-medium mb-1">AIコメント</label>
+          <label className="block font-medium mb-1">AI Comment</label>
           <textarea
             value={aiComment}
             className="border rounded px-3 py-2 w-full bg-gray-100"

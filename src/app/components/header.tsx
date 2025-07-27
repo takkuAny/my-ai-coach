@@ -15,7 +15,7 @@ export function Header() {
   const [userName, setUserName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
 
-  // ユーザー情報を取得
+  // Fetch user profile info
   useEffect(() => {
     const fetchProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -43,9 +43,9 @@ export function Header() {
 
   return (
     <header className="flex justify-between items-center p-4 bg-muted">
-      <div className="text-xl font-bold">📘 学習AIコーチ</div>
+      <div className="text-xl font-bold">📘 Learning AI Coach</div>
       <div className="flex items-center gap-4">
-        {/* 名前とプロフィール画像 */}
+        {/* Name and profile image */}
         {avatarUrl && (
           <Image
             src={avatarUrl}
@@ -56,15 +56,9 @@ export function Header() {
           />
         )}
         {userName && <span className="text-sm font-medium">{userName}</span>}
-        {/* テーマ切替＆ログアウト */}
-        <Button
-          variant="ghost"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-        >
-          切替
-        </Button>
+
         <Button variant="outline" onClick={handleLogout}>
-          ログアウト
+          Logout
         </Button>
       </div>
     </header>

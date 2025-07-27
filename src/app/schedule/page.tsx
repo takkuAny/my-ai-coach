@@ -81,7 +81,7 @@ export default function Page() {
   const fetchSubjects = async (): Promise<Subject[]> => {
     const { data, error } = await supabase.from('subject_with_category').select('*');
     if (error || !data) {
-      console.error('学習対象の取得に失敗:', error?.message);
+      console.error('Failed to fetch subjects:', error?.message);
       return [];
     }
     return data.map((item: RawSubject) => ({
@@ -110,7 +110,7 @@ export default function Page() {
 
         return {
           id: item.id,
-          title: item.subject_name ?? '未設定',
+          title: item.subject_name ?? 'Unspecified',
           start: hasTime ? `${item.date}T${item.start_time}` : item.date,
           end: hasTime && item.end_time ? `${item.date}T${item.end_time}` : undefined,
           allDay: !hasTime,
@@ -162,7 +162,7 @@ export default function Page() {
     const newEnd = event.end;
 
     if (!newStart) {
-      alert('開始時刻が取得できませんでした。');
+      alert('Could not get start time.');
       info.revert();
       return;
     }
@@ -194,7 +194,7 @@ export default function Page() {
     const { error } = await supabase.from('schedules').update(updateData).eq('id', id);
 
     if (error) {
-      alert('更新に失敗しました');
+      alert('Failed to update event.');
       info.revert();
     } else {
       await fetchEvents();
@@ -210,7 +210,7 @@ export default function Page() {
   return (
     <div className="p-4">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold">スケジューラー</h2>
+        <h2 className="text-xl font-bold">Scheduler</h2>
         <CustomTabs tab={tab} setTab={setTab} />
       </div>
 
@@ -258,7 +258,7 @@ export default function Page() {
 
           const formattedEvent = {
             id: newEvent.id,
-            title: newEvent.subject?.name ?? '未設定',
+            title: newEvent.subject?.name ?? 'Unspecified',
             start: hasTime ? `${newEvent.date}T${newEvent.start_time}` : newEvent.date,
             end: hasTime && newEvent.end_time ? `${newEvent.date}T${newEvent.end_time}` : undefined,
             allDay: !hasTime,
@@ -320,7 +320,7 @@ export default function Page() {
               .eq('id', selectedEvent.id);
 
             if (error) {
-              alert('更新に失敗しました: ' + error.message);
+              alert('Failed to update: ' + error.message);
             } else {
               await fetchEvents();
               setCalendarKey((prev) => prev + 1);
@@ -334,7 +334,7 @@ export default function Page() {
               .delete()
               .eq('id', selectedEvent.id);
             if (error) {
-              alert('削除に失敗しました: ' + error.message);
+              alert('Failed to delete: ' + error.message);
             } else {
               await fetchEvents();
               setCalendarKey((prev) => prev + 1);

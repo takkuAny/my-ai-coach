@@ -23,12 +23,12 @@ export function formatMemoForAI(input: MemoInput): string {
 
   const parts: string[] = [];
 
-  parts.push(`📅 日付: ${date}`);
-  parts.push(`🕒 時間: ${startTime} ～ ${endTime}`);
-  if (pages !== undefined && pages !== 0) parts.push(`📖 読んだページ数: ${pages}ページ`);
-  if (items !== undefined && items !== 0) parts.push(`🧠 覚えた単語・項目数: ${items}個`);
-  parts.push(`🔁 取り組み回数: ${attempt}回目`);
-  parts.push(`📝 メモ: ${memo || 'なし'}`);
+  parts.push(`📅 Date: ${date}`);
+  parts.push(`🕒 Time: ${startTime} - ${endTime}`);
+  if (pages !== undefined && pages !== 0) parts.push(`📖 Pages Read: ${pages}`);
+  if (items !== undefined && items !== 0) parts.push(`🧠 Items Memorized: ${items}`);
+  parts.push(`🔁 Attempt: ${attempt}`);
+  parts.push(`📝 Memo: ${memo || 'None'}`);
 
   return parts.join('\n');
 }

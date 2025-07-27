@@ -38,7 +38,7 @@ export default function RecordDetailPage() {
       .select('*');
 
     if (error || !data) {
-      console.error('学習対象の取得に失敗:', error?.message);
+      console.error('Failed to fetch subjects:', error?.message);
       return [];
     }
 
@@ -52,13 +52,13 @@ export default function RecordDetailPage() {
     }));
   };
 
-  const refreshSubjects = async (): Promise<void> => {
+  const refreshSubjects = async () => {
     const updated = await fetchSubjects();
     setSubjects(updated);
   };
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchRecord = async () => {
       const loadedSubjects = await fetchSubjects();
       setSubjects(loadedSubjects);
 
@@ -69,7 +69,7 @@ export default function RecordDetailPage() {
         .single();
 
       if (error || !data) {
-        console.error('学習記録の取得に失敗:', error?.message);
+        console.error('Failed to fetch record:', error?.message);
         return;
       }
 
@@ -87,7 +87,7 @@ export default function RecordDetailPage() {
       setAiComment(data.ai_comment ?? '');
     };
 
-    fetchData();
+    fetchRecord();
   }, [id]);
 
   const handleUpdate = async (form: any) => {
@@ -98,7 +98,7 @@ export default function RecordDetailPage() {
     const diffMinutes = Math.floor((end.getTime() - start.getTime()) / 60000);
 
     if (isNaN(diffMinutes) || diffMinutes <= 0) {
-      alert('時刻の入力を確認してください');
+      alert('Please check the time input.');
       setLoading(false);
       return;
     }
@@ -121,22 +121,22 @@ export default function RecordDetailPage() {
     setLoading(false);
 
     if (error) {
-      alert('更新に失敗しました: ' + error.message);
+      alert('Failed to update: ' + error.message);
     } else {
       router.push('/records');
     }
   };
 
   const handleDelete = async () => {
-    if (regenerating || loading) return;
+    if (loading || regenerating) return;
 
-    const confirmDelete = confirm('本当に削除しますか？');
+    const confirmDelete = confirm('Are you sure you want to delete this record?');
     if (!confirmDelete) return;
 
     const { error } = await supabase.from('tasks').delete().eq('id', id);
 
     if (error) {
-      alert('削除に失敗しました: ' + error.message);
+      alert('Failed to delete: ' + error.message);
     } else {
       router.push('/records');
     }
@@ -148,17 +148,17 @@ export default function RecordDetailPage() {
     const { date, startTime, endTime, memo, pages, items } = initialValues;
 
     const prompt = [
-      `学習日: ${date}`,
-      `開始: ${startTime} / 終了: ${endTime}`,
-      memo ? `メモ: ${memo}` : '',
-      pages ? `読んだページ数: ${pages}` : '',
-      items ? `覚えた項目数: ${items}` : '',
+      `Date: ${date}`,
+      `Start: ${startTime} / End: ${endTime}`,
+      memo ? `Memo: ${memo}` : '',
+      pages ? `Pages read: ${pages}` : '',
+      items ? `Items learned: ${items}` : '',
     ]
       .filter(Boolean)
       .join('\n');
 
     if (!prompt.trim()) {
-      setAiComment('AIコメントを生成する情報が不足しています。');
+      setAiComment('Insufficient data to generate AI comment.');
       return;
     }
 
@@ -171,24 +171,25 @@ export default function RecordDetailPage() {
       });
 
       const result = await res.json();
-      const comment = result.comment ?? 'AIコメントの生成に失敗しました。';
+      const comment = result.comment ?? 'Failed to generate AI comment.';
 
       setAiComment(comment);
-
       await supabase.from('tasks').update({ ai_comment: comment }).eq('id', id);
     } catch (err) {
-      console.error('AIコメント再生成失敗:', err);
-      setAiComment('AIコメントの生成に失敗しました。');
+      console.error('Error regenerating AI comment:', err);
+      setAiComment('Failed to generate AI comment.');
     } finally {
       setRegenerating(false);
     }
   };
 
-  if (!initialValues) return <div className="p-6">読み込み中...</div>;
+  if (!initialValues) {
+    return <div className="p-6">Loading...</div>;
+  }
 
   return (
     <main className="max-w-xl mx-auto p-6">
-      <h1 className="text-xl font-bold mb-4">学習記録の詳細</h1>
+      <h1 className="text-xl font-bold mb-4">Record Details</h1>
 
       <RecordForm
         onSubmit={handleUpdate}
@@ -210,7 +211,7 @@ export default function RecordDetailPage() {
           disabled={regenerating}
           className="text-blue-600 underline hover:text-blue-800"
         >
-          {regenerating ? 'AIコメントを生成中…' : 'AIコメントを再生成する'}
+          {regenerating ? 'Generating AI comment…' : 'Regenerate AI comment'}
         </button>
       </div>
 
@@ -221,7 +222,7 @@ export default function RecordDetailPage() {
           disabled={regenerating}
           className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 transition"
         >
-          キャンセル
+          Cancel
         </button>
 
         <div className="flex gap-4">
@@ -230,7 +231,7 @@ export default function RecordDetailPage() {
             disabled={regenerating}
             className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
           >
-            削除
+            Delete
           </button>
           <button
             type="submit"
@@ -238,7 +239,7 @@ export default function RecordDetailPage() {
             disabled={loading || regenerating}
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
           >
-            {loading ? '更新中…' : '更新'}
+            {loading ? 'Updating…' : 'Update'}
           </button>
         </div>
       </div>

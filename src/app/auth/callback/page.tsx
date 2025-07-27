@@ -5,9 +5,9 @@ import { redirect } from 'next/navigation';
 export default async function AuthCallback() {
   const supabase = createServerComponentClient({ cookies });
 
-  // OAuth コールバックのセッションを取得
+  // Retrieve the session from the OAuth callback
   await supabase.auth.getSession();
 
-  // ログイン後に遷移させたいページへリダイレクト
+  // Redirect to the post-login page
   redirect('/dashboard');
 }

@@ -36,7 +36,7 @@ export default function RecordNewPage() {
       .select('*');
 
     if (error || !data) {
-      console.error('学習対象の取得に失敗:', error?.message);
+      console.error('Failed to fetch subjects:', error?.message);
       return [];
     }
 
@@ -64,17 +64,17 @@ export default function RecordNewPage() {
 
   const generateAIComment = async (input: typeof formState) => {
     const prompt = [
-      `学習日: ${input.date}`,
-      `開始: ${input.startTime} / 終了: ${input.endTime}`,
-      input.memo ? `メモ: ${input.memo}` : '',
-      input.pages ? `読んだページ数: ${input.pages}` : '',
-      input.items ? `覚えた項目数: ${input.items}` : '',
+      `Date: ${input.date}`,
+      `Start: ${input.startTime} / End: ${input.endTime}`,
+      input.memo ? `Memo: ${input.memo}` : '',
+      input.pages ? `Pages Read: ${input.pages}` : '',
+      input.items ? `Items Memorized: ${input.items}` : '',
     ]
       .filter(Boolean)
       .join('\n');
 
     if (!prompt.trim()) {
-      setAiComment('AIコメントを生成する情報が不足しています。');
+      setAiComment('Insufficient information to generate AI comment.');
       return;
     }
 
@@ -87,11 +87,11 @@ export default function RecordNewPage() {
       });
 
       const result = await res.json();
-      const comment = result.comment ?? 'AIコメントの生成に失敗しました。';
+      const comment = result.comment ?? 'Failed to generate AI comment.';
       setAiComment(comment);
     } catch (err) {
-      console.error('AIコメント生成失敗:', err);
-      setAiComment('AIコメントの生成に失敗しました。');
+      console.error('AI comment generation failed:', err);
+      setAiComment('Failed to generate AI comment.');
     } finally {
       setRegenerating(false);
     }
@@ -111,7 +111,7 @@ export default function RecordNewPage() {
 
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { error, data } = await supabase.from('tasks').insert({
+    const { error } = await supabase.from('tasks').insert({
       subject_id: form.subjectId,
       memo: form.memo,
       date: form.date,
@@ -127,7 +127,7 @@ export default function RecordNewPage() {
     setLoading(false);
 
     if (error) {
-      alert('登録に失敗しました: ' + error.message);
+      alert('Failed to submit: ' + error.message);
       return;
     }
 
@@ -136,7 +136,7 @@ export default function RecordNewPage() {
 
   return (
     <div className="max-w-xl mx-auto p-4">
-      <h1 className="text-xl font-bold mb-4">学習記録の新規作成</h1>
+      <h1 className="text-xl font-bold mb-4">New Study Record</h1>
 
       <RecordForm
         onSubmit={(form) => {
@@ -154,15 +154,17 @@ export default function RecordNewPage() {
       />
 
       <div className="text-sm text-gray-600 mt-2">
-        <p className="font-semibold mb-1">💬 AIコメント</p>
-        <div className="bg-gray-100 p-2 rounded min-h-[60px]">{aiComment || '（まだ生成されていません）'}</div>
+        <p className="font-semibold mb-1">💬 AI Comment</p>
+        <div className="bg-gray-100 p-2 rounded min-h-[60px]">
+          {aiComment || '(Not generated yet)'}
+        </div>
 
         <button
           onClick={() => generateAIComment(formState)}
           disabled={regenerating}
           className="mt-2 text-blue-600 underline hover:text-blue-800"
         >
-          {regenerating ? 'AIコメントを生成中…' : 'AIコメントを再生成する'}
+          {regenerating ? 'Generating AI comment...' : 'Regenerate AI comment'}
         </button>
       </div>
 
@@ -173,7 +175,7 @@ export default function RecordNewPage() {
           disabled={loading || regenerating}
           className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 transition"
         >
-          キャンセル
+          Cancel
         </button>
 
         <div className="flex gap-2">
@@ -183,7 +185,7 @@ export default function RecordNewPage() {
             disabled={loading || regenerating}
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
           >
-            {loading ? '登録中…' : '登録'}
+            {loading ? 'Submitting...' : 'Submit'}
           </button>
         </div>
       </div>

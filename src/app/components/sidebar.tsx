@@ -9,10 +9,10 @@ export function SidebarNav() {
   return (
     <aside className="w-64 h-screen bg-gray-100 border-r p-4">
       <nav className="space-y-4">
-        <SidebarItem href="/dashboard" icon={<LayoutDashboard size={20} />} label="ダッシュボード" />
-        <SidebarItem href="/records" icon={<BookOpen size={20} />} label="学習記録" />
-        <SidebarItem href="/schedule" icon={<Calendar size={20} />} label="スケジューラー" />
-        <SidebarItem href="/settings" icon={<Settings size={20} />} label="設定" />
+        <SidebarItem href="/dashboard" icon={<LayoutDashboard size={20} />} label="Dashboard" />
+        <SidebarItem href="/records" icon={<BookOpen size={20} />} label="Study Records" />
+        <SidebarItem href="/schedule" icon={<Calendar size={20} />} label="Scheduler" />
+        <SidebarItem href="/settings" icon={<Settings size={20} />} label="Settings" />
       </nav>
     </aside>
   );

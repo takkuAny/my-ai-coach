@@ -9,7 +9,6 @@ import { FcGoogle } from 'react-icons/fc';
 import { FaGithub } from 'react-icons/fa';
 import { supabase } from '@/lib/supabase/client';
 
-// ✅ client ID を localStorage に保持（mac_address代替）
 function getOrGenerateClientId(): string {
   let id = localStorage.getItem('client_id');
   if (!id) {
@@ -23,7 +22,7 @@ export default function SignInPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false); // true = 新規登録
+  const [isSignUp, setIsSignUp] = useState(false);
 
   useEffect(() => {
     let hasRun = false;
@@ -36,7 +35,7 @@ export default function SignInPage() {
       const user = session?.user;
       if (!user) return;
 
-      // ✅ profiles 登録（存在しないときのみ）
+      // Insert profile if not exists
       const { data: existing } = await supabase
         .from('profiles')
         .select('id')
@@ -52,7 +51,7 @@ export default function SignInPage() {
         });
       }
 
-      // ✅ api_keys 登録（user_id + is_demo の重複制御）
+      // Insert demo API key
       const clientId = getOrGenerateClientId();
       await supabase.from('api_keys').upsert({
         user_id: user.id,
@@ -71,7 +70,6 @@ export default function SignInPage() {
     registerUserData();
   }, []);
 
-  // ✅ メール認証（SignIn/SignUp）
   const handleEmailAuth = async () => {
     if (!email || !password) return alert('Please enter both email and password.');
 
@@ -91,7 +89,6 @@ export default function SignInPage() {
     }
   };
 
-  // ✅ OAuthログイン
   const handleOAuth = async (provider: 'google' | 'github') => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
@@ -99,7 +96,7 @@ export default function SignInPage() {
         redirectTo: `${location.origin}/signin`,
       },
     });
-    if (error) alert('OAuth エラー: ' + error.message);
+    if (error) alert('OAuth error: ' + error.message);
   };
 
   return (

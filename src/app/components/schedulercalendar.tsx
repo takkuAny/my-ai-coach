@@ -8,9 +8,9 @@ const localizer = momentLocalizer(moment)
 
 const events = [
   {
-    title: '英語学習',
+    title: 'English Study',
     start: new Date(),
-    end: new Date(new Date().getTime() + 60 * 60 * 1000), // 1時間後
+    end: new Date(new Date().getTime() + 60 * 60 * 1000), // 1 hour later
   },
 ]
 

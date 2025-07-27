@@ -69,7 +69,7 @@ export default function EditEventModal({
   useEffect(() => {
     if (selectedEvent) {
       setDate(selectedEvent.date);
-      setStartTime(selectedEvent.start_time?.slice(0, 5) ?? ''); // "HH:MM"
+      setStartTime(selectedEvent.start_time?.slice(0, 5) ?? '');
       setEndTime(selectedEvent.end_time?.slice(0, 5) ?? '');
       setPages(selectedEvent.pages ?? undefined);
       setItems(selectedEvent.items ?? undefined);
@@ -95,10 +95,10 @@ export default function EditEventModal({
     <Dialog open={isOpen} onClose={onClose} className="fixed z-50 inset-0 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen">
         <DialogPanel className="bg-white p-6 rounded shadow-md w-full max-w-md">
-          <DialogTitle className="text-lg font-bold mb-4">イベントを編集</DialogTitle>
+          <DialogTitle className="text-lg font-bold mb-4">Edit Event</DialogTitle>
 
           <label className="block mb-2">
-            学習対象:
+            Subject:
             <select
               value={subjectId}
               onChange={(e) => setSubjectId(e.target.value)}
@@ -106,14 +106,14 @@ export default function EditEventModal({
             >
               {subjects.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.name}（{s.category.name}）
+                  {s.name} ({s.category.name})
                 </option>
               ))}
             </select>
           </label>
 
           <label className="block mb-2">
-            日付:
+            Date:
             <input
               type="date"
               value={date}
@@ -123,7 +123,7 @@ export default function EditEventModal({
           </label>
 
           <label className="block mb-2">
-            開始時刻（空欄可）:
+            Start Time (optional):
             <input
               type="time"
               value={startTime}
@@ -133,7 +133,7 @@ export default function EditEventModal({
           </label>
 
           <label className="block mb-2">
-            終了時刻（空欄可）:
+            End Time (optional):
             <input
               type="time"
               value={endTime}
@@ -143,7 +143,7 @@ export default function EditEventModal({
           </label>
 
           <label className="block mb-2">
-            ページ数:
+            Pages:
             <input
               type="number"
               value={pages ?? ""}
@@ -153,7 +153,7 @@ export default function EditEventModal({
           </label>
 
           <label className="block mb-2">
-            項目数:
+            Items:
             <input
               type="number"
               value={items ?? ""}
@@ -163,7 +163,7 @@ export default function EditEventModal({
           </label>
 
           <label className="block mb-4">
-            メモ:
+            Memo:
             <textarea
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
@@ -176,19 +176,19 @@ export default function EditEventModal({
               onClick={handleUpdate}
               className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
             >
-              更新
+              Update
             </button>
             <button
               onClick={onDeleteRequest}
               className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
             >
-              削除
+              Delete
             </button>
             <button
               onClick={onClose}
               className="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400"
             >
-              キャンセル
+              Cancel
             </button>
           </div>
         </DialogPanel>

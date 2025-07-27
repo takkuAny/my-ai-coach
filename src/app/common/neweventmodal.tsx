@@ -72,8 +72,7 @@ export default function NewEventModal({
     const user = (await supabase.auth.getUser()).data.user
     if (!user || !subjectId || !date) return
 
-    const typeValue = is24HMode === true ? '24h' : 'todo' // 明示的に判定
-    console.log('📝 inserting with type:', typeValue)
+    const typeValue = is24HMode === true ? '24h' : 'todo'
 
     const { data, error } = await supabase
       .from('schedules')
@@ -86,7 +85,7 @@ export default function NewEventModal({
         planned_pages: pages || null,
         planned_items: items || null,
         memo,
-        type: typeValue, // ✅ 安定化
+        type: typeValue,
       })
       .select('*')
       .single()
@@ -99,7 +98,6 @@ export default function NewEventModal({
     onAdded(data)
     onClose()
   }
-
 
   const handleAddSubject = async () => {
     if (!newSubjectName || !newCategoryName) return
@@ -144,36 +142,36 @@ export default function NewEventModal({
     <Dialog open={isOpen} onClose={onClose} className="fixed z-50 inset-0 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen">
         <DialogPanel className="bg-white p-6 rounded shadow-md w-full max-w-md">
-          <DialogTitle className="text-lg font-bold mb-4">イベントを追加</DialogTitle>
+          <DialogTitle className="text-lg font-bold mb-4">Add Event</DialogTitle>
 
           <label className="block mb-2">
-            学習対象:
+            Subject:
             <select
               value={subjectId}
               onChange={(e) => setSubjectId(e.target.value)}
               className="w-full mt-1 p-2 border rounded"
             >
-              <option value="">-- 選択してください --</option>
+              <option value="">-- Please select --</option>
               {subjects.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.name}（{s.category.name}）
+                  {s.name} ({s.category.name})
                 </option>
               ))}
             </select>
           </label>
 
           <div className="bg-gray-100 p-3 rounded mb-4">
-            <p className="text-sm font-semibold mb-2">💡 新しい学習対象とカテゴリを追加</p>
+            <p className="text-sm font-semibold mb-2">💡 Add a new subject and category</p>
             <input
               type="text"
-              placeholder="学習対象名"
+              placeholder="Subject name"
               value={newSubjectName}
               onChange={(e) => setNewSubjectName(e.target.value)}
               className="w-full mb-2 p-2 border rounded"
             />
             <input
               type="text"
-              placeholder="カテゴリ名"
+              placeholder="Category name"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               className="w-full mb-2 p-2 border rounded"
@@ -190,17 +188,17 @@ export default function NewEventModal({
                 />
               ))}
             </div>
-            <p className="text-xs text-gray-500 mb-2">カテゴリカラーを選択</p>
+            <p className="text-xs text-gray-500 mb-2">Select category color</p>
             <button
               onClick={handleAddSubject}
               className="bg-blue-400 text-white px-3 py-1 text-sm rounded hover:bg-blue-500"
             >
-              学習対象を追加
+              Add Subject
             </button>
           </div>
 
           <label className="block mb-2">
-            日付:
+            Date:
             <input
               type="date"
               value={date}
@@ -210,7 +208,7 @@ export default function NewEventModal({
           </label>
 
           <label className="block mb-2">
-            開始時刻（空欄可）:
+            Start Time (optional):
             <input
               type="time"
               value={startTime}
@@ -220,7 +218,7 @@ export default function NewEventModal({
           </label>
 
           <label className="block mb-2">
-            終了時刻（空欄可）:
+            End Time (optional):
             <input
               type="time"
               value={endTime}
@@ -230,7 +228,7 @@ export default function NewEventModal({
           </label>
 
           <label className="block mb-2">
-            ページ数:
+            Pages:
             <input
               type="number"
               value={pages ?? ''}
@@ -240,7 +238,7 @@ export default function NewEventModal({
           </label>
 
           <label className="block mb-2">
-            項目数:
+            Items:
             <input
               type="number"
               value={items ?? ''}
@@ -250,7 +248,7 @@ export default function NewEventModal({
           </label>
 
           <label className="block mb-4">
-            メモ:
+            Memo:
             <textarea
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
@@ -263,13 +261,13 @@ export default function NewEventModal({
               onClick={handleAdd}
               className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
             >
-              作成
+              Create
             </button>
             <button
               onClick={onClose}
               className="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400"
             >
-              キャンセル
+              Cancel
             </button>
           </div>
         </DialogPanel>
