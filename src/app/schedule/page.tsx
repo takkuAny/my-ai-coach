@@ -71,7 +71,7 @@ export default function Page() {
   const [selectedStartTime, setSelectedStartTime] = useState<string | undefined>();
   const [selectedEndTime, setSelectedEndTime] = useState<string | undefined>();
   const [selectedEvent, setSelectedEvent] = useState<ModalScheduleEvent | null>(null);
-  const [allSubjects, setAllSubjects] = useState<any[]>([]);
+  const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [tab, setTab] = useState<'todo' | '24h'>('24h');
@@ -255,14 +255,15 @@ export default function Page() {
         onClose={() => setIsNewModalOpen(false)}
         onAdded={(newEvent) => {
           const hasTime = newEvent.start_time !== null;
+          const matchedSubject = subjects.find((s) => s.id === newEvent.subject_id);
 
           const formattedEvent = {
             id: newEvent.id,
-            title: newEvent.subject?.name ?? 'Unspecified',
+            title: matchedSubject?.name ?? 'Unspecified',
             start: hasTime ? `${newEvent.date}T${newEvent.start_time}` : newEvent.date,
             end: hasTime && newEvent.end_time ? `${newEvent.date}T${newEvent.end_time}` : undefined,
             allDay: !hasTime,
-            backgroundColor: newEvent.subject?.category?.color ?? '#999',
+            backgroundColor: matchedSubject?.category.color ?? '#999',
             raw: {
               id: newEvent.id,
               date: newEvent.date,
@@ -273,10 +274,10 @@ export default function Page() {
               memo: newEvent.memo ?? undefined,
               subject: {
                 id: newEvent.subject_id,
-                name: newEvent.subject?.name ?? '',
+                name: matchedSubject?.name ?? '',
                 category: {
-                  name: newEvent.subject?.category?.name ?? '',
-                  color: newEvent.subject?.category?.color ?? '#999',
+                  name: matchedSubject?.category.name ?? '',
+                  color: matchedSubject?.category.color ?? '#999',
                 },
               },
             },
@@ -288,7 +289,6 @@ export default function Page() {
         subjects={subjects}
         subjectId={subjectId}
         setSubjectId={setSubjectId}
-        allSubjects={allSubjects}
         is24HMode={is24HMode}
         onSubjectRefresh={refreshSubjects}
       />
