@@ -131,7 +131,7 @@ export default function SignInPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <Button className="w-full" onClick={handleEmailAuth}>
+          <Button className="w-full text-center text-sm" onClick={handleEmailAuth}>
             {isSignUp ? 'Create Account' : 'Login'}
           </Button>
 
