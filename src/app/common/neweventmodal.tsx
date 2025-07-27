@@ -13,17 +13,30 @@ interface Subject {
   }
 }
 
+interface ScheduleEvent {
+  id: string
+  user_id: string
+  subject_id: string
+  date: string
+  start_time: string | null
+  end_time: string | null
+  planned_pages: number | null
+  planned_items: number | null
+  memo: string
+  type: string
+  created_at?: string
+}
+
 interface NewEventModalProps {
   isOpen: boolean
   onClose: () => void
-  onAdded: (newEvent: any) => void
+  onAdded: (newEvent: ScheduleEvent) => void
   selectedDate: string | null
   selectedStartTime?: string
   selectedEndTime?: string
   subjects: Subject[]
   subjectId: string
   setSubjectId: (id: string) => void
-  allSubjects: Subject[]
   onSubjectRefresh: () => void
   is24HMode: boolean
 }
@@ -38,7 +51,6 @@ export default function NewEventModal({
   subjects,
   subjectId,
   setSubjectId,
-  allSubjects,
   onSubjectRefresh,
   is24HMode,
 }: NewEventModalProps) {
@@ -66,7 +78,7 @@ export default function NewEventModal({
       setNewCategoryName('')
       setNewCategoryColor('#60a5fa')
     }
-  }, [isOpen])
+  }, [isOpen, selectedDate, selectedStartTime, selectedEndTime, setSubjectId])
 
   const handleAdd = async () => {
     const user = (await supabase.auth.getUser()).data.user
