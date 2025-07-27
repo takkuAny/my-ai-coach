@@ -10,7 +10,7 @@ import Image from "next/image";
 export function Header() {
   const supabaseClient = supabase;
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
+  useTheme();
 
   const [userName, setUserName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");

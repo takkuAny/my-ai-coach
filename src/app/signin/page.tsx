@@ -68,7 +68,7 @@ export default function SignInPage() {
     };
 
     registerUserData();
-  }, []);
+  }, [router]);
 
   const handleEmailAuth = async () => {
     if (!email || !password) return alert('Please enter both email and password.');

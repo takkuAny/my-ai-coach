@@ -21,13 +21,24 @@ type RawSubject = {
   category_color: string;
 };
 
+type RecordFormValues = {
+  subjectId: string;
+  memo: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  pages?: number;
+  items?: number;
+  attempt: number;
+};
+
 export default function RecordDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [initialValues, setInitialValues] = useState<any>(null);
+  const [initialValues, setInitialValues] = useState<RecordFormValues | null>(null);
   const [aiComment, setAiComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
@@ -90,7 +101,7 @@ export default function RecordDetailPage() {
     fetchRecord();
   }, [id]);
 
-  const handleUpdate = async (form: any) => {
+  const handleUpdate = async (form: RecordFormValues) => {
     setLoading(true);
 
     const start = new Date(`${form.date}T${form.startTime}`);
@@ -197,7 +208,9 @@ export default function RecordDetailPage() {
         subjects={subjects}
         subjectId={initialValues.subjectId}
         setSubjectId={(id: string) =>
-          setInitialValues((prev: any) => ({ ...prev, subjectId: id }))
+          setInitialValues((prev) =>
+            prev ? { ...prev, subjectId: id } : null
+          )
         }
         loading={loading || regenerating}
         isEditing

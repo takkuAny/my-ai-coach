@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { EventDropArg, EventInput } from '@fullcalendar/core';
+import { DateClickArg } from '@fullcalendar/interaction';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import '@fullcalendar/common/main.css';
@@ -64,14 +65,12 @@ type RawSubject = {
 export default function Page() {
   const [events, setEvents] = useState<EventInput[]>([]);
   const [calendarKey, setCalendarKey] = useState(0);
-  const [editDate, setEditDate] = useState('');
   const [subjectId, setSubjectId] = useState<string>('');
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedStartTime, setSelectedStartTime] = useState<string | undefined>();
   const [selectedEndTime, setSelectedEndTime] = useState<string | undefined>();
   const [selectedEvent, setSelectedEvent] = useState<ModalScheduleEvent | null>(null);
-  const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [tab, setTab] = useState<'todo' | '24h'>('24h');
@@ -143,7 +142,7 @@ export default function Page() {
     fetchSubjects().then(setSubjects);
   }, [fetchEvents]);
 
-  const handleDateClick = (arg: any) => {
+  const handleDateClick = (arg: DateClickArg) => {
     const clickedDate = new Date(arg.date);
     const hours = String(clickedDate.getHours()).padStart(2, '0');
     const minutes = String(clickedDate.getMinutes()).padStart(2, '0');
@@ -242,7 +241,6 @@ export default function Page() {
 
           setSelectedEvent(modalEvent);
           setSubjectId(fullData.subject.id);
-          setEditDate(fullData.date);
           setIsEditModalOpen(true);
         }}
       />
@@ -304,12 +302,20 @@ export default function Page() {
             if (!selectedEvent) return;
             const { subjectId, date, pages, items, memo, startTime, endTime } = form;
 
-            const updatePayload: any = {
+            const updatePayload: {
+              subject_id: string;
+              date: string;
+              planned_pages: number | null;
+              planned_items: number | null;
+              memo: string;
+              start_time: string | null;
+              end_time: string | null;
+            } = {
               subject_id: subjectId,
               date,
               planned_pages: pages ?? null,
               planned_items: items ?? null,
-              memo,
+              memo: memo ?? '',
               start_time: startTime !== '' ? startTime : null,
               end_time: endTime !== '' ? endTime : null,
             };

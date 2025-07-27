@@ -14,11 +14,43 @@ import {
   CartesianGrid,
 } from 'recharts'
 
+interface StudyTask {
+  id: string
+  user_id: string
+  date: string
+  time: number
+  ai_comment?: string
+  attempt_number: number
+  subject_name: string
+  category_name: string
+  category_color: string
+}
+
+interface ProgressEntry {
+  date: string
+  time: number
+}
+
+interface TodoTask {
+  id: string
+  user_id: string
+  date: string
+  planned_pages?: number
+  planned_items?: number
+  memo?: string
+  subject_id: string
+  subject_name: string
+  category_name: string
+  category_color: string
+  created_at: string
+  start_time?: string
+}
+
 export default function DashboardPage() {
-  const [dueTasks, setDueTasks] = useState<any[]>([])
+  const [dueTasks, setDueTasks] = useState<StudyTask[]>([])
   const [aiComments, setAiComments] = useState<string[]>([])
-  const [progressData, setProgressData] = useState<any[]>([])
-  const [todoTasks, setTodoTasks] = useState<any[]>([])
+  const [progressData, setProgressData] = useState<ProgressEntry[]>([])
+  const [todoTasks, setTodoTasks] = useState<TodoTask[]>([])
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -64,7 +96,7 @@ export default function DashboardPage() {
       const comments = data
         .filter((t) => t.ai_comment)
         .slice(-5)
-        .map((t) => t.ai_comment)
+        .map((t) => t.ai_comment as string)
       setAiComments(comments)
 
       const grouped: Record<string, number> = {}
@@ -97,7 +129,8 @@ export default function DashboardPage() {
           subject_name,
           category_name,
           category_color,
-          created_at
+          created_at,
+          start_time
         `)
         .eq('user_id', userId)
         .eq('date', today)
@@ -121,7 +154,7 @@ export default function DashboardPage() {
 
       {/* ✅ Today's ToDo Tasks */}
       <section>
-        <h2 className="text-lg font-semibold mb-2">✅ Today's ToDo Tasks</h2>
+        <h2 className="text-lg font-semibold mb-2">✅ Today&apos;s ToDo Tasks</h2>
         {todoTasks.length === 0 ? (
           <p className="text-gray-500">📭 No tasks scheduled for today.</p>
         ) : (

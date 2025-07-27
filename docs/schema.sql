@@ -169,8 +169,10 @@ select
   s.deleted_at
 from
   schedules s
-  join subjects subj on s.subject_id = subj.id
-  left join categories cat on subj.category_id = cat.id;
+  join subjects subj on s.subject_id = subj.id and subj.deleted_at is null
+  left join categories cat on subj.category_id = cat.id and subj.user_id = cat.user_id
+where
+  s.deleted_at is null;
 ---
 create view public.task_view_with_category as
 select
