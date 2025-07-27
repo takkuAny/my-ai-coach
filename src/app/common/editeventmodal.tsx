@@ -26,6 +26,8 @@ interface ScheduleEvent {
       color: string;
     };
   };
+  start_time?: string | null;
+  end_time?: string | null;
 }
 
 interface EditEventModalProps {
@@ -34,6 +36,8 @@ interface EditEventModalProps {
   onUpdate: (form: {
     subjectId: string;
     date: string;
+    startTime: string;
+    endTime: string;
     pages?: number;
     items?: number;
     memo?: string;
@@ -56,6 +60,8 @@ export default function EditEventModal({
   selectedEvent,
 }: EditEventModalProps) {
   const [date, setDate] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [pages, setPages] = useState<number | undefined>(undefined);
   const [items, setItems] = useState<number | undefined>(undefined);
   const [memo, setMemo] = useState<string>("");
@@ -63,10 +69,12 @@ export default function EditEventModal({
   useEffect(() => {
     if (selectedEvent) {
       setDate(selectedEvent.date);
+      setStartTime(selectedEvent.start_time?.slice(0, 5) ?? ''); // "HH:MM"
+      setEndTime(selectedEvent.end_time?.slice(0, 5) ?? '');
       setPages(selectedEvent.pages ?? undefined);
       setItems(selectedEvent.items ?? undefined);
-      setMemo(selectedEvent.memo ?? "");
-      setSubjectId(selectedEvent.subject.id); // ← ここでsubject.idを利用
+      setMemo(selectedEvent.memo ?? '');
+      setSubjectId(selectedEvent.subject.id);
     }
   }, [selectedEvent, setSubjectId]);
 
@@ -75,6 +83,8 @@ export default function EditEventModal({
     onUpdate({
       subjectId,
       date,
+      startTime,
+      endTime,
       pages,
       items,
       memo,
@@ -108,6 +118,26 @@ export default function EditEventModal({
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
+              className="w-full mt-1 p-2 border rounded"
+            />
+          </label>
+
+          <label className="block mb-2">
+            開始時刻（空欄可）:
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              className="w-full mt-1 p-2 border rounded"
+            />
+          </label>
+
+          <label className="block mb-2">
+            終了時刻（空欄可）:
+            <input
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
               className="w-full mt-1 p-2 border rounded"
             />
           </label>

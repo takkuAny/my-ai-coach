@@ -1,320 +1,279 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import Modal from './modal';
-import { supabase } from '@/lib/supabase/client';
+import { useEffect, useState } from 'react'
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
+import { supabase } from '@/lib/supabase/client'
 
 interface Subject {
-  id: string;
-  name: string;
+  id: string
+  name: string
   category: {
-    name: string;
-    color: string;
-  };
+    name: string
+    color: string
+  }
 }
 
-type RawSubject = {
-  id: string;
-  name: string;
-  category_name: string;
-  category_color: string;
-};
-
-interface ScheduleModalProps {
-  initialValues?: Partial<{
-    subjectId: string;
-    memo: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    pages?: number;
-    items?: number;
-    attempt: number;
-  }>;
-  subjects: Subject[];
-  subjectId: string;
-  setSubjectId: (id: string) => void;
-  isEditing?: boolean;
-  aiComment?: string;
-  onSubjectRefresh: () => Promise<void>;
-  selectedDate: string | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onAdded: (newEvent: any) => void;
-  allSubjects: Subject[];
+interface NewEventModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onAdded: (newEvent: any) => void
+  selectedDate: string | null
+  selectedStartTime?: string
+  selectedEndTime?: string
+  subjects: Subject[]
+  subjectId: string
+  setSubjectId: (id: string) => void
+  allSubjects: Subject[]
+  onSubjectRefresh: () => void
+  is24HMode: boolean
 }
 
 export default function NewEventModal({
-  selectedDate,
   isOpen,
   onClose,
   onAdded,
+  selectedDate,
+  selectedStartTime,
+  selectedEndTime,
+  subjects,
   subjectId,
   setSubjectId,
   allSubjects,
   onSubjectRefresh,
-}: ScheduleModalProps) {
-  const [newSubjectName, setNewSubjectName] = useState('');
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [newCategoryColor, setNewCategoryColor] = useState('#999999');
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [pages, setPages] = useState('');
-  const [items, setItems] = useState('');
-  const [memo, setMemo] = useState('');
+  is24HMode,
+}: NewEventModalProps) {
+  const [date, setDate] = useState('')
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
+  const [pages, setPages] = useState<number | undefined>()
+  const [items, setItems] = useState<number | undefined>()
+  const [memo, setMemo] = useState('')
+
+  const [newSubjectName, setNewSubjectName] = useState('')
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [newCategoryColor, setNewCategoryColor] = useState('#60a5fa')
+
+  useEffect(() => {
+    if (isOpen) {
+      setSubjectId('')
+      setDate(selectedDate ? selectedDate.slice(0, 10) : '')
+      setStartTime(selectedStartTime || '')
+      setEndTime(selectedEndTime || '')
+      setPages(undefined)
+      setItems(undefined)
+      setMemo('')
+      setNewSubjectName('')
+      setNewCategoryName('')
+      setNewCategoryColor('#60a5fa')
+    }
+  }, [isOpen])
+
+  const handleAdd = async () => {
+    const user = (await supabase.auth.getUser()).data.user
+    if (!user || !subjectId || !date) return
+
+    const typeValue = is24HMode === true ? '24h' : 'todo' // 明示的に判定
+    console.log('📝 inserting with type:', typeValue)
+
+    const { data, error } = await supabase
+      .from('schedules')
+      .insert({
+        user_id: user.id,
+        subject_id: subjectId,
+        date,
+        start_time: startTime || null,
+        end_time: endTime || null,
+        planned_pages: pages || null,
+        planned_items: items || null,
+        memo,
+        type: typeValue, // ✅ 安定化
+      })
+      .select('*')
+      .single()
+
+    if (error) {
+      console.error('Insert error:', error)
+      return
+    }
+
+    onAdded(data)
+    onClose()
+  }
+
 
   const handleAddSubject = async () => {
-    const trimmedSubject = newSubjectName.trim();
-    const trimmedCategory = newCategoryName.trim();
-    if (!trimmedSubject || !trimmedCategory) {
-      alert('学習対象とカテゴリ名を入力してください');
-      return;
-    }
+    if (!newSubjectName || !newCategoryName) return
 
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData?.user?.id;
-    if (!userId) {
-      alert('ログインユーザー情報の取得に失敗しました');
-      return;
-    }
+    const user = (await supabase.auth.getUser()).data.user
+    if (!user) return
 
     let { data: existingCategory } = await supabase
       .from('categories')
-      .select('*')
-      .eq('name', trimmedCategory)
-      .is('deleted_at', null)
-      .maybeSingle();
+      .select('id, name, color')
+      .eq('name', newCategoryName)
+      .maybeSingle()
 
     if (!existingCategory) {
-      const { data: inserted } = await supabase
+      const { data: newCat } = await supabase
         .from('categories')
-        .insert({
-          name: trimmedCategory,
-          color: newCategoryColor,
-          user_id: userId,
-        })
+        .insert({ name: newCategoryName, color: newCategoryColor, user_id: user.id })
         .select()
-        .single();
-      existingCategory = inserted;
+        .single()
+      existingCategory = newCat
     }
 
-    const { data: newSubject } = await supabase
+    const { data: insertedSubject } = await supabase
       .from('subjects')
       .insert({
-        name: trimmedSubject,
-        category_id: existingCategory.id,
-        user_id: userId,
+        name: newSubjectName,
+        category_id: existingCategory!.id,
+        user_id: user.id,
       })
-      .select('id, name, category_id')
-      .single();
+      .select('id')
+      .single()
 
-    if (!newSubject) {
-      alert('学習対象の作成に失敗しました');
-      return;
+    if (insertedSubject) {
+      setSubjectId(insertedSubject.id)
+      onSubjectRefresh()
+      setNewSubjectName('')
+      setNewCategoryName('')
     }
-
-    setNewSubjectName('');
-    setNewCategoryName('');
-    setNewCategoryColor('#999999');
-    setSubjectId(newSubject.id);
-    await onSubjectRefresh();
-  };
-
-  const handleSave = async () => {
-    if (!subjectId || !selectedDate) {
-      alert('学習対象と日付は必須です');
-      return;
-    }
-
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData?.user?.id;
-    if (!userId) {
-      alert('ログインが必要です');
-      return;
-    }
-
-    const { error: insertError } = await supabase.from('schedules').insert({
-      user_id: userId,
-      type: 'todo',
-      subject_id: subjectId,
-      date: selectedDate,
-      planned_pages: pages ? Number(pages) : null,
-      planned_items: items ? Number(items) : null,
-      memo: memo || null,
-      created_at: new Date().toISOString(),
-    });
-
-    if (insertError) {
-      alert('保存に失敗しました: ' + insertError.message);
-      return;
-    }
-
-    // 登録直後の最新イベントをビューから取得
-    const { data: newRows, error: fetchError } = await supabase
-      .from('schedule_with_subject')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('date', selectedDate)
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (fetchError || !newRows || newRows.length === 0) {
-      alert('新規イベントの取得に失敗しました: ' + fetchError?.message);
-      return;
-    }
-
-    const newItem = newRows[0];
-
-    // FullCalendar 形式で渡す
-    onAdded({
-      id: newItem.id,
-      title: newItem.subject_name ?? '未設定',
-      date: newItem.date,
-      allDay: true,
-      backgroundColor: newItem.category_color ?? '#999',
-      raw: {
-        id: newItem.id,
-        date: newItem.date,
-        start_time: newItem.start_time,
-        end_time: newItem.end_time,
-        planned_pages: newItem.planned_pages ?? undefined,
-        planned_items: newItem.planned_items ?? undefined,
-        memo: newItem.memo ?? undefined,
-        subject: {
-          id: newItem.subject_id,
-          name: newItem.subject_name,
-          category: {
-            name: newItem.category_name,
-            color: newItem.category_color,
-          },
-        },
-      },
-    });
-
-    setSubjectId('');
-    setPages('');
-    setItems('');
-    setMemo('');
-    onClose();
-  };
-
-  const fetchSubjects = async (): Promise<Subject[]> => {
-    const { data, error } = await supabase.from('subject_with_category').select(`*`);
-    if (error || !data) {
-      console.error('学習対象の取得に失敗:', error?.message);
-      return [];
-    }
-    return data.map((item: RawSubject) => ({
-      id: item.id,
-      name: item.name,
-      category: {
-        name: item.category_name,
-        color: item.category_color,
-      },
-    }));
-  };
-
-  useEffect(() => {
-    (async () => {
-      const loaded = await fetchSubjects();
-      setSubjects(loaded);
-    })();
-  }, []);
+  }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <div className="p-4 space-y-4">
-        <h3 className="text-lg font-bold">新しいToDo（{selectedDate ?? '未選択'}）</h3>
+    <Dialog open={isOpen} onClose={onClose} className="fixed z-50 inset-0 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen">
+        <DialogPanel className="bg-white p-6 rounded shadow-md w-full max-w-md">
+          <DialogTitle className="text-lg font-bold mb-4">イベントを追加</DialogTitle>
 
-        <div>
-          <label className="block text-sm font-medium">学習対象</label>
-          <select
-            value={subjectId}
-            onChange={(e) => setSubjectId(e.target.value)}
-            className="border rounded px-3 py-2 w-full"
-          >
-            <option value="">-- 選択してください --</option>
-            {subjects.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}（{s.category?.name ?? 'カテゴリ不明'}）
-              </option>
-            ))}
-          </select>
-        </div>
+          <label className="block mb-2">
+            学習対象:
+            <select
+              value={subjectId}
+              onChange={(e) => setSubjectId(e.target.value)}
+              className="w-full mt-1 p-2 border rounded"
+            >
+              <option value="">-- 選択してください --</option>
+              {subjects.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}（{s.category.name}）
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <div className="bg-gray-100 p-3 rounded space-y-2">
-          <p className="text-sm font-semibold">💡 新しい学習対象とカテゴリを追加</p>
-          <input
-            type="text"
-            placeholder="学習対象名"
-            value={newSubjectName}
-            onChange={(e) => setNewSubjectName(e.target.value)}
-            className="border rounded px-3 py-2 w-full"
-          />
-          <input
-            type="text"
-            placeholder="カテゴリ名"
-            value={newCategoryName}
-            onChange={(e) => setNewCategoryName(e.target.value)}
-            className="border rounded px-3 py-2 w-full"
-          />
+          <div className="bg-gray-100 p-3 rounded mb-4">
+            <p className="text-sm font-semibold mb-2">💡 新しい学習対象とカテゴリを追加</p>
+            <input
+              type="text"
+              placeholder="学習対象名"
+              value={newSubjectName}
+              onChange={(e) => setNewSubjectName(e.target.value)}
+              className="w-full mb-2 p-2 border rounded"
+            />
+            <input
+              type="text"
+              placeholder="カテゴリ名"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              className="w-full mb-2 p-2 border rounded"
+            />
 
-          <div className="flex flex-wrap gap-2">
-            {["#f87171", "#fbbf24", "#34d399", "#60a5fa", "#a78bfa", "#f472b6", "#d1d5db", "#999999"].map((color) => (
-              <button
-                key={color}
-                type="button"
-                className={`w-6 h-6 rounded-full border-2 ${
-                  newCategoryColor === color ? 'border-black' : 'border-transparent'
-                }`}
-                style={{ backgroundColor: color }}
-                onClick={() => setNewCategoryColor(color)}
-              />
-            ))}
+            <div className="flex flex-wrap gap-2 mb-2">
+              {["#f87171", "#fbbf24", "#34d399", "#60a5fa", "#a78bfa", "#f472b6", "#d1d5db", "#999999"].map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className={`w-6 h-6 rounded-full border-2 ${newCategoryColor === color ? 'border-black' : 'border-transparent'}`}
+                  style={{ backgroundColor: color }}
+                  onClick={() => setNewCategoryColor(color)}
+                />
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mb-2">カテゴリカラーを選択</p>
+            <button
+              onClick={handleAddSubject}
+              className="bg-blue-400 text-white px-3 py-1 text-sm rounded hover:bg-blue-500"
+            >
+              学習対象を追加
+            </button>
           </div>
-          <p className="text-sm text-gray-500">カテゴリカラーを選択</p>
 
-          <button
-            type="button"
-            onClick={handleAddSubject}
-            className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
-          >
-            学習対象を追加
-          </button>
-        </div>
+          <label className="block mb-2">
+            日付:
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full mt-1 p-2 border rounded"
+            />
+          </label>
 
-        <div className="grid grid-cols-2 gap-3">
-          <input
-            type="number"
-            className="border p-2 w-full"
-            placeholder="📄 ページ数"
-            value={pages}
-            onChange={(e) => setPages(e.target.value)}
-          />
-          <input
-            type="number"
-            className="border p-2 w-full"
-            placeholder="📘 単語・項目数"
-            value={items}
-            onChange={(e) => setItems(e.target.value)}
-          />
-        </div>
+          <label className="block mb-2">
+            開始時刻（空欄可）:
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              className="w-full mt-1 p-2 border rounded"
+            />
+          </label>
 
-        <textarea
-          className="border p-2 w-full"
-          placeholder="📝 メモ（任意）"
-          value={memo}
-          onChange={(e) => setMemo(e.target.value)}
-        />
+          <label className="block mb-2">
+            終了時刻（空欄可）:
+            <input
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              className="w-full mt-1 p-2 border rounded"
+            />
+          </label>
 
-        <div className="flex justify-end space-x-2 pt-2">
-          <button onClick={onClose} className="px-4 py-1 bg-gray-300 text-black rounded">
-            キャンセル
-          </button>
-          <button onClick={handleSave} className="px-4 py-1 bg-blue-500 text-white rounded">
-            登録
-          </button>
-        </div>
+          <label className="block mb-2">
+            ページ数:
+            <input
+              type="number"
+              value={pages ?? ''}
+              onChange={(e) => setPages(e.target.value ? Number(e.target.value) : undefined)}
+              className="w-full mt-1 p-2 border rounded"
+            />
+          </label>
+
+          <label className="block mb-2">
+            項目数:
+            <input
+              type="number"
+              value={items ?? ''}
+              onChange={(e) => setItems(e.target.value ? Number(e.target.value) : undefined)}
+              className="w-full mt-1 p-2 border rounded"
+            />
+          </label>
+
+          <label className="block mb-4">
+            メモ:
+            <textarea
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              className="w-full mt-1 p-2 border rounded"
+            />
+          </label>
+
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={handleAdd}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+              作成
+            </button>
+            <button
+              onClick={onClose}
+              className="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400"
+            >
+              キャンセル
+            </button>
+          </div>
+        </DialogPanel>
       </div>
-    </Modal>
-  );
+    </Dialog>
+  )
 }

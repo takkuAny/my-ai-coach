@@ -1,19 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import dynamic from "next/dynamic";
-import { EventDropArg, EventInput } from "@fullcalendar/core";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import "@fullcalendar/common/main.css";
-import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
-import { supabase } from "@/lib/supabase/client";
+import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
+import { EventDropArg, EventInput } from '@fullcalendar/core';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import '@fullcalendar/common/main.css';
+import { supabase } from '@/lib/supabase/client';
 
-import NewEventModal from "@/common/neweventmodal";
-import EditEventModal from "@/common/editeventmodal";
-// DeleteEventModal は未使用なら削除してOK
-// import DeleteEventModal from "@/common/deleteeventmodal";
-
-/* ---------- types ---------- */
+import NewEventModal from '@/common/neweventmodal';
+import EditEventModal from '@/common/editeventmodal';
+import interactionPlugin from '@fullcalendar/interaction';
+import { CustomTabs } from '@/components/ui/tabs';
 
 interface Subject {
   id: string;
@@ -24,7 +22,6 @@ interface Subject {
   };
 }
 
-// DB から取り出して FullCalendar の extendedProps.raw に入れておく形
 type RawScheduleFromView = {
   id: string;
   date: string;
@@ -39,13 +36,14 @@ type RawScheduleFromView = {
   category_color: string;
 };
 
-// EditEventModal に渡すためのイベント型（EditEventModal.tsx の ScheduleEvent と同じ形）
 type ModalScheduleEvent = {
   id: string;
   date: string;
   pages?: number;
   items?: number;
   memo?: string;
+  start_time?: string | null;
+  end_time?: string | null;
   subject: {
     id: string;
     name: string;
@@ -63,32 +61,27 @@ type RawSubject = {
   category_color: string;
 };
 
-/* ---------- component ---------- */
-
 export default function Page() {
   const [events, setEvents] = useState<EventInput[]>([]);
   const [calendarKey, setCalendarKey] = useState(0);
-
-  const [editDate, setEditDate] = useState("");
-  const [subjectId, setSubjectId] = useState<string>("");
-
+  const [editDate, setEditDate] = useState('');
+  const [subjectId, setSubjectId] = useState<string>('');
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedStartTime, setSelectedStartTime] = useState<string | undefined>();
+  const [selectedEndTime, setSelectedEndTime] = useState<string | undefined>();
   const [selectedEvent, setSelectedEvent] = useState<ModalScheduleEvent | null>(null);
-
-  const [allSubjects, setAllSubjects] = useState<any[]>([]); // NewEventModal で必要なら保持
+  const [allSubjects, setAllSubjects] = useState<any[]>([]);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  // const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
-  const FullCalendar = dynamic(() => import("@fullcalendar/react"), { ssr: false });
-
-  /* ---------- data fetchers ---------- */
+  const [tab, setTab] = useState<'todo' | '24h'>('24h');
+  const is24HMode = true;
+  const FullCalendar = dynamic(() => import('@fullcalendar/react'), { ssr: false });
 
   const fetchSubjects = async (): Promise<Subject[]> => {
-    const { data, error } = await supabase.from("subject_with_category").select("*");
+    const { data, error } = await supabase.from('subject_with_category').select('*');
     if (error || !data) {
-      console.error("学習対象の取得に失敗:", error?.message);
+      console.error('学習対象の取得に失敗:', error?.message);
       return [];
     }
     return data.map((item: RawSubject) => ({
@@ -107,35 +100,40 @@ export default function Page() {
     if (!userId) return;
 
     const { data, error } = await supabase
-      .from("schedule_with_subject")
-      .select("*")
-      .eq("user_id", userId);
+      .from('schedule_with_subject')
+      .select('*')
+      .eq('user_id', userId);
 
     if (!error && data) {
-      const formatted = (data as RawScheduleFromView[]).map((item) => ({
-        id: item.id,
-        title: item.subject_name ?? "未設定",
-        date: item.date,
-        allDay: true,
-        backgroundColor: item.category_color ?? "#999",
-        raw: {
+      const formatted = (data as RawScheduleFromView[]).map((item) => {
+        const hasTime = item.start_time !== null;
+
+        return {
           id: item.id,
-          date: item.date,
-          start_time: item.start_time,
-          end_time: item.end_time,
-          planned_pages: item.planned_pages ?? undefined,
-          planned_items: item.planned_items ?? undefined,
-          memo: item.memo ?? undefined,
-          subject: {
-            id: item.subject_id,
-            name: item.subject_name,
-            category: {
-              name: item.category_name,
-              color: item.category_color,
+          title: item.subject_name ?? '未設定',
+          start: hasTime ? `${item.date}T${item.start_time}` : item.date,
+          end: hasTime && item.end_time ? `${item.date}T${item.end_time}` : undefined,
+          allDay: !hasTime,
+          backgroundColor: item.category_color ?? '#999',
+          raw: {
+            id: item.id,
+            date: item.date,
+            start_time: item.start_time,
+            end_time: item.end_time,
+            planned_pages: item.planned_pages ?? undefined,
+            planned_items: item.planned_items ?? undefined,
+            memo: item.memo ?? undefined,
+            subject: {
+              id: item.subject_id,
+              name: item.subject_name,
+              category: {
+                name: item.category_name,
+                color: item.category_color,
+              },
             },
           },
-        },
-      }));
+        };
+      });
       setEvents(formatted);
     }
   }, []);
@@ -145,22 +143,58 @@ export default function Page() {
     fetchSubjects().then(setSubjects);
   }, [fetchEvents]);
 
-  /* ---------- handlers ---------- */
+  const handleDateClick = (arg: any) => {
+    const clickedDate = new Date(arg.date);
+    const hours = String(clickedDate.getHours()).padStart(2, '0');
+    const minutes = String(clickedDate.getMinutes()).padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
 
-  const handleDateClick = (arg: DateClickArg) => {
     setSelectedDate(arg.dateStr);
+    setSelectedStartTime(timeStr);
+    setSelectedEndTime(undefined);
     setIsNewModalOpen(true);
   };
 
   const handleEventDrop = async (info: EventDropArg) => {
     const { event } = info;
     const id = event.id;
-    const newDate = event.startStr;
+    const newStart = event.start;
+    const newEnd = event.end;
 
-    const { error } = await supabase.from("schedules").update({ date: newDate }).eq("id", id);
+    if (!newStart) {
+      alert('開始時刻が取得できませんでした。');
+      info.revert();
+      return;
+    }
+
+    const newDate = newStart.toLocaleDateString('sv-SE');
+
+    let updateData: {
+      date: string;
+      start_time: string | null;
+      end_time: string | null;
+    };
+
+    if (event.allDay) {
+      updateData = {
+        date: newDate,
+        start_time: null,
+        end_time: null,
+      };
+    } else {
+      const newStartTime = newStart.toTimeString().slice(0, 5);
+      const newEndTime = newEnd ? newEnd.toTimeString().slice(0, 5) : null;
+      updateData = {
+        date: newDate,
+        start_time: newStartTime,
+        end_time: newEndTime,
+      };
+    }
+
+    const { error } = await supabase.from('schedules').update(updateData).eq('id', id);
 
     if (error) {
-      alert("更新に失敗しました");
+      alert('更新に失敗しました');
       info.revert();
     } else {
       await fetchEvents();
@@ -173,73 +207,92 @@ export default function Page() {
     setSubjects(loaded);
   };
 
-  /* ---------- render ---------- */
-
   return (
     <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">スケジューラー</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold">スケジューラー</h2>
+        <CustomTabs tab={tab} setTab={setTab} />
+      </div>
 
       <FullCalendar
         key={calendarKey}
-        plugins={[dayGridPlugin, interactionPlugin]}
-        initialView="dayGridMonth"
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        initialView={tab === '24h' ? 'timeGridWeek' : 'dayGridMonth'}
+        allDaySlot={true}
         events={events}
+        slotMinTime="06:00:00"
+        slotMaxTime="30:00:00"
         dateClick={handleDateClick}
+        editable={true}
+        selectable={true}
+        timeZone="local"
+        eventDrop={handleEventDrop}
         eventClick={(info) => {
-          const fullData = info.event.extendedProps.raw as {
-            id: string;
-            date: string;
-            start_time: string | null;
-            end_time: string | null;
-            planned_pages?: number;
-            planned_items?: number;
-            memo?: string;
-            subject: {
-              id: string;
-              name: string;
-              category: {
-                name: string;
-                color: string;
-              };
-            };
-          };
-
+          const fullData = info.event.extendedProps.raw;
           const modalEvent: ModalScheduleEvent = {
             id: info.event.id,
-            date: info.event.startStr,
+            date: fullData.date,
             pages: fullData.planned_pages,
             items: fullData.planned_items,
             memo: fullData.memo,
             subject: fullData.subject,
+            start_time: fullData.start_time,
+            end_time: fullData.end_time,
           };
 
           setSelectedEvent(modalEvent);
           setSubjectId(fullData.subject.id);
-          setEditDate(info.event.startStr);
+          setEditDate(fullData.date);
           setIsEditModalOpen(true);
         }}
-        selectable={true}
-        editable={true}
-        eventDrop={handleEventDrop}
       />
 
-      {/* New */}
       <NewEventModal
         selectedDate={selectedDate}
+        selectedStartTime={selectedStartTime}
+        selectedEndTime={selectedEndTime}
         isOpen={isNewModalOpen}
         onClose={() => setIsNewModalOpen(false)}
         onAdded={(newEvent) => {
-          setEvents([...events, newEvent]);
+          const hasTime = newEvent.start_time !== null;
+
+          const formattedEvent = {
+            id: newEvent.id,
+            title: newEvent.subject?.name ?? '未設定',
+            start: hasTime ? `${newEvent.date}T${newEvent.start_time}` : newEvent.date,
+            end: hasTime && newEvent.end_time ? `${newEvent.date}T${newEvent.end_time}` : undefined,
+            allDay: !hasTime,
+            backgroundColor: newEvent.subject?.category?.color ?? '#999',
+            raw: {
+              id: newEvent.id,
+              date: newEvent.date,
+              start_time: newEvent.start_time,
+              end_time: newEvent.end_time,
+              planned_pages: newEvent.planned_pages ?? undefined,
+              planned_items: newEvent.planned_items ?? undefined,
+              memo: newEvent.memo ?? undefined,
+              subject: {
+                id: newEvent.subject_id,
+                name: newEvent.subject?.name ?? '',
+                category: {
+                  name: newEvent.subject?.category?.name ?? '',
+                  color: newEvent.subject?.category?.color ?? '#999',
+                },
+              },
+            },
+          };
+
+          setEvents((prev) => [...prev, formattedEvent]);
           setCalendarKey((prev) => prev + 1);
         }}
         subjects={subjects}
         subjectId={subjectId}
         setSubjectId={setSubjectId}
         allSubjects={allSubjects}
+        is24HMode={is24HMode}
         onSubjectRefresh={refreshSubjects}
       />
 
-      {/* Edit */}
       {selectedEvent && (
         <EditEventModal
           isOpen={isEditModalOpen}
@@ -249,23 +302,25 @@ export default function Page() {
           onClose={() => setIsEditModalOpen(false)}
           onUpdate={async (form) => {
             if (!selectedEvent) return;
+            const { subjectId, date, pages, items, memo, startTime, endTime } = form;
 
-            const { subjectId, date, pages, items, memo } = form;
+            const updatePayload: any = {
+              subject_id: subjectId,
+              date,
+              planned_pages: pages ?? null,
+              planned_items: items ?? null,
+              memo,
+              start_time: startTime !== '' ? startTime : null,
+              end_time: endTime !== '' ? endTime : null,
+            };
 
-            // schedules テーブルのカラム名が planned_* の場合はこちらに合わせる
             const { error } = await supabase
-              .from("schedules")
-              .update({
-                subject_id: subjectId,
-                date,
-                planned_pages: pages ?? null,
-                planned_items: items ?? null,
-                memo,
-              })
-              .eq("id", selectedEvent.id);
+              .from('schedules')
+              .update(updatePayload)
+              .eq('id', selectedEvent.id);
 
             if (error) {
-              alert("更新に失敗しました: " + error.message);
+              alert('更新に失敗しました: ' + error.message);
             } else {
               await fetchEvents();
               setCalendarKey((prev) => prev + 1);
@@ -273,12 +328,13 @@ export default function Page() {
             }
           }}
           onDeleteRequest={async () => {
-          if (!selectedEvent) return;
-
-            const { error } = await supabase.from("schedules").delete().eq("id", selectedEvent.id);
-
+            if (!selectedEvent) return;
+            const { error } = await supabase
+              .from('schedules')
+              .delete()
+              .eq('id', selectedEvent.id);
             if (error) {
-              alert("削除に失敗しました: " + error.message);
+              alert('削除に失敗しました: ' + error.message);
             } else {
               await fetchEvents();
               setCalendarKey((prev) => prev + 1);
