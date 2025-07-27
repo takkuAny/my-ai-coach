@@ -139,18 +139,7 @@ export default function SettingsPage() {
         />
       </div>
 
-      {/* API Key */}
-      <div className="space-y-2">
-        <Label>API Key (OpenAI)</Label>
-        <Input
-          type="password"
-          value={apiKey}
-          placeholder="sk-..."
-          onChange={(e) => setApiKey(e.target.value)}
-        />
-      </div>
-
-      <Button onClick={handleSave} disabled={loading}>
+      <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSave} disabled={loading}>
         {loading ? 'Saving...' : 'Save Settings'}
       </Button>
     </main>

@@ -66,6 +66,14 @@ The following diagram shows the relationship between core entities such as `user
 - [ ] **Unit Tests & CI**: Jest + GitHub Actions integration is planned
 - [ ] **Soft Delete Support**: Currently records are physically deleted; consider implementing soft delete with `deleted_at` fields for better auditability and recovery
 ---
+## 🌐 Live Demo
+
+You can try the app here:  
+👉 **https://your-app-url.vercel.app/**
+
+No login required (Demo mode available).  
+Or, sign up and explore more features.
+---
 
 ## 🚀 Getting Started
 
