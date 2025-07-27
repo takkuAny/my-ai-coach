@@ -23,7 +23,7 @@ export default function RecordListPage() {
   const [filtered, setFiltered] = useState<RecordItem[]>([])
   const [searchText, setSearchText] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
-  const [categories, setCategories] = useState<{ name: string; color: string }[]>([])
+  const [categories, setCategories] = useState<{ name: string; color: string | null }[]>([])
   const [loading, setLoading] = useState(true)
   const [authError, setAuthError] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -71,8 +71,9 @@ export default function RecordListPage() {
           JSON.stringify({ name: item.category_name, color: item.category_color })
         )
       )
-    ).map((str) => JSON.parse(str))
-    setCategories(cats.filter((c: any) => c.name))
+    ).map((str) => JSON.parse(str) as { name: string; color: string | null })
+
+    setCategories(cats.filter((c) => c.name))
   }
 
   const calcMinutes = (start: string, end: string) => {

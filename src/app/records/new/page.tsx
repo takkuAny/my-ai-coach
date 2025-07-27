@@ -21,6 +21,17 @@ type RawSubject = {
   category_color: string;
 };
 
+type RecordFormValues = {
+  subjectId: string;
+  memo: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  pages?: number;
+  items?: number;
+  attempt: number;
+};
+
 export default function RecordNewPage() {
   const router = useRouter();
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -28,7 +39,16 @@ export default function RecordNewPage() {
   const [loading, setLoading] = useState(false);
   const [aiComment, setAiComment] = useState('');
   const [regenerating, setRegenerating] = useState(false);
-  const [formState, setFormState] = useState<any>({});
+  const [formState, setFormState] = useState<RecordFormValues>({
+    subjectId: '',
+    memo: '',
+    date: '',
+    startTime: '',
+    endTime: '',
+    pages: undefined,
+    items: undefined,
+    attempt: 1,
+  });
 
   const fetchSubjects = async (): Promise<Subject[]> => {
     const { data, error } = await supabase
@@ -62,7 +82,7 @@ export default function RecordNewPage() {
     })();
   }, []);
 
-  const generateAIComment = async (input: typeof formState) => {
+  const generateAIComment = async (input: RecordFormValues) => {
     const prompt = [
       `Date: ${input.date}`,
       `Start: ${input.startTime} / End: ${input.endTime}`,
@@ -97,16 +117,7 @@ export default function RecordNewPage() {
     }
   };
 
-  const handleSubmit = async (form: {
-    subjectId: string;
-    memo: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    pages?: number;
-    items?: number;
-    attempt: number;
-  }) => {
+  const handleSubmit = async (form: RecordFormValues) => {
     setLoading(true);
 
     const { data: { user } } = await supabase.auth.getUser();

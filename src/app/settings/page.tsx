@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import Image from 'next/image'
 
 export default function SettingsPage() {
   const [userId, setUserId] = useState('')
@@ -74,7 +74,6 @@ export default function SettingsPage() {
       }
     }
 
-    // Update profile
     await supabase
       .from('profiles')
       .update({
@@ -84,7 +83,6 @@ export default function SettingsPage() {
       })
       .eq('id', userId)
 
-    // Upsert API key
     if (apiKey) {
       await supabase
         .from('api_keys')
@@ -124,12 +122,13 @@ export default function SettingsPage() {
       <div className="space-y-2">
         <Label>Profile Image</Label>
         {avatarPreview && (
-          <img
+          <Image
             src={avatarPreview}
             alt="Preview"
             width={64}
             height={64}
             className="rounded-full"
+            unoptimized
           />
         )}
         <Input

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
 
 interface Subject {
@@ -48,7 +48,6 @@ export function RecordForm({
   subjects,
   subjectId,
   setSubjectId,
-  loading,
   isEditing = false,
   aiComment = '',
   onSubjectRefresh,
@@ -74,14 +73,14 @@ export function RecordForm({
       return
     }
 
-    const { data: userData, error: userError } = await supabase.auth.getUser()
+    const { data: userData } = await supabase.auth.getUser()
     const userId = userData?.user?.id
 
     if (!userId) {
       alert('Failed to retrieve user information.')
       return
     }
-
+    // 'existingCategory' is reassigned below, so use 'let'
     let { data: existingCategory, error: categoryFetchError } = await supabase
       .from('categories')
       .select('*')
