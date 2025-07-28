@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
-import { isDueForReview, getReviewLabel } from '@/lib/utils/reviewschedule'
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase/client';
+import { isDueForReview, getReviewLabel } from '@/lib/utils/reviewschedule';
 import {
   ResponsiveContainer,
   BarChart,
@@ -12,61 +12,62 @@ import {
   Tooltip,
   Legend,
   CartesianGrid,
-} from 'recharts'
+} from 'recharts';
 
 interface StudyTask {
-  id: string
-  user_id: string
-  date: string
-  time: number
-  ai_comment?: string
-  attempt_number: number
-  subject_name: string
-  category_name: string
-  category_color: string
+  id: string;
+  user_id: string;
+  date: string;
+  time: number;
+  ai_comment?: string;
+  attempt_number: number;
+  subject_name: string;
+  category_name: string;
+  category_color: string;
 }
 
-interface ProgressEntry {
-  date: string
-  time: number
+interface ColoredProgressEntry {
+  date: string;
+  [categoryName: string]: string | number;
 }
 
 interface TodoTask {
-  id: string
-  user_id: string
-  date: string
-  planned_pages?: number
-  planned_items?: number
-  memo?: string
-  subject_id: string
-  subject_name: string
-  category_name: string
-  category_color: string
-  created_at: string
-  start_time?: string
+  id: string;
+  user_id: string;
+  date: string;
+  planned_pages?: number;
+  planned_items?: number;
+  memo?: string;
+  subject_id: string;
+  subject_name: string;
+  category_name: string;
+  category_color: string;
+  created_at: string;
+  start_time?: string;
 }
 
 export default function DashboardPage() {
-  const [dueTasks, setDueTasks] = useState<StudyTask[]>([])
-  const [aiComments, setAiComments] = useState<string[]>([])
-  const [progressData, setProgressData] = useState<ProgressEntry[]>([])
-  const [todoTasks, setTodoTasks] = useState<TodoTask[]>([])
+  const [dueTasks, setDueTasks] = useState<StudyTask[]>([]);
+  const [aiComments, setAiComments] = useState<string[]>([]);
+  const [progressData, setProgressData] = useState<ColoredProgressEntry[]>([]);
+  const [todoTasks, setTodoTasks] = useState<TodoTask[]>([]);
+  const [categoryColorMap, setCategoryColorMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const fetchAll = async () => {
       const {
         data: { user },
         error: userError,
-      } = await supabase.auth.getUser()
+      } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        console.error('Failed to get user:', userError)
-        return
+        console.error('Failed to get user:', userError);
+        return;
       }
 
-      const userId = user.id
-      await Promise.all([fetchStudyData(userId), fetchTodoTasks(userId)])
-    }
+      const userId = user.id;
+      await Promise.all([fetchStudyData(userId), fetchTodoTasks(userId)]);
+    };
 
     const fetchStudyData = async (userId: string) => {
       const { data, error } = await supabase
@@ -83,38 +84,52 @@ export default function DashboardPage() {
           category_color
         `)
         .eq('user_id', userId)
-        .is('deleted_at', null)
+        .is('deleted_at', null);
 
       if (error || !data) {
-        console.error('Error fetching study data:', error)
-        return
+        console.error('Error fetching study data:', error);
+        return;
       }
 
-      const due = data.filter((t) => isDueForReview(t.date, t.attempt_number))
-      setDueTasks(due)
+      const due = data.filter((t) => isDueForReview(t.date, t.attempt_number));
+      setDueTasks(due);
 
       const comments = data
         .filter((t) => t.ai_comment)
         .slice(-5)
-        .map((t) => t.ai_comment as string)
-      setAiComments(comments)
+        .map((t) => t.ai_comment as string);
+      setAiComments(comments);
 
-      const grouped: Record<string, number> = {}
+      // ✅ カテゴリ別に色を記録
+      const colorMap: Record<string, string> = {};
       data.forEach((t) => {
-        if (t.date && t.time) {
-          grouped[t.date] = (grouped[t.date] || 0) + t.time
+        if (t.category_name && t.category_color) {
+          colorMap[t.category_name] = t.category_color;
         }
-      })
+      });
+      setCategoryColorMap(colorMap);
+
+      // ✅ カテゴリ別に日付で積み上げ
+      const grouped: Record<string, Record<string, number>> = {};
+      data.forEach((t) => {
+        if (!t.date || !t.time || !t.category_name) return;
+        if (!grouped[t.date]) grouped[t.date] = {};
+        grouped[t.date][t.category_name] = (grouped[t.date][t.category_name] || 0) + t.time;
+      });
 
       const sorted = Object.entries(grouped)
         .sort(([a], [b]) => a.localeCompare(b))
         .slice(-7)
-        .map(([date, time]) => ({ date, time }))
-      setProgressData(sorted)
-    }
+        .map(([date, categories]) => ({
+          date,
+          ...categories,
+        }));
+
+      setProgressData(sorted);
+    };
 
     const fetchTodoTasks = async (userId: string) => {
-      const today = new Date().toISOString().split('T')[0]
+      const today = new Date().toISOString().split('T')[0];
 
       const { data, error } = await supabase
         .from('schedule_with_subject')
@@ -135,18 +150,18 @@ export default function DashboardPage() {
         .eq('user_id', userId)
         .eq('date', today)
         .is('deleted_at', null)
-        .order('date', { ascending: true })
+        .order('date', { ascending: true });
 
       if (error) {
-        console.error('Error fetching ToDo tasks:', error)
-        return
+        console.error('Error fetching ToDo tasks:', error);
+        return;
       }
 
-      setTodoTasks(data || [])
-    }
+      setTodoTasks(data || []);
+    };
 
-    fetchAll()
-  }, [])
+    fetchAll();
+  }, []);
 
   return (
     <main className="max-w-4xl mx-auto p-6 space-y-8">
@@ -193,7 +208,7 @@ export default function DashboardPage() {
         )}
       </section>
 
-      {/* 📈 Study Progress (Graph) */}
+      {/* 📈 Study Progress */}
       <section>
         <h2 className="text-lg font-semibold mb-2">📈 Study Progress (Last 7 Days)</h2>
         {progressData.length === 0 ? (
@@ -206,7 +221,21 @@ export default function DashboardPage() {
               <YAxis unit="min" />
               <Tooltip />
               <Legend />
-              <Bar dataKey="time" name="Study Time" fill="#3b82f6" />
+              {Array.from(
+                new Set(
+                  progressData.flatMap((entry) =>
+                    Object.keys(entry).filter((key) => key !== 'date')
+                  )
+                )
+              ).map((category) => (
+                <Bar
+                  key={category}
+                  dataKey={category}
+                  stackId="a"
+                  name={category}
+                  fill={categoryColorMap[category] || '#ccc'}
+                />
+              ))}
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -228,5 +257,5 @@ export default function DashboardPage() {
         )}
       </section>
     </main>
-  )
+  );
 }
