@@ -1,42 +1,41 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { FcGoogle } from 'react-icons/fc'
-import { FaGithub } from 'react-icons/fa'
-import { supabase } from '@/lib/supabase/client'
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { FcGoogle } from 'react-icons/fc';
+import { supabase } from '@/lib/supabase/client';
 
 function getOrGenerateClientId(): string {
-  let id = localStorage.getItem('client_id')
+  let id = localStorage.getItem('client_id');
   if (!id) {
-    id = crypto.randomUUID()
-    localStorage.setItem('client_id', id)
+    id = crypto.randomUUID();
+    localStorage.setItem('client_id', id);
   }
-  return id
+  return id;
 }
 
 export default function SignInPage() {
-  const router = useRouter()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [isSignUp, setIsSignUp] = useState(false)
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
 
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        const user = session.user
+        const user = session.user;
 
-        // プロフィール作成（初回のみ）
+        // Create profile if not exists
         const { data: existing } = await supabase
           .from('profiles')
           .select('id')
           .eq('id', user.id)
-          .single()
+          .single();
 
         if (!existing) {
           await supabase.from('profiles').insert({
@@ -44,11 +43,11 @@ export default function SignInPage() {
             email: user.email,
             name: user.user_metadata.full_name ?? '',
             avatar_url: user.user_metadata.avatar_url ?? '',
-          })
+          });
         }
 
-        // DEMOキーをUpsert
-        const clientId = getOrGenerateClientId()
+        // DEMO API key registration
+        const clientId = getOrGenerateClientId();
         await supabase.from('api_keys').upsert(
           {
             user_id: user.id,
@@ -61,55 +60,56 @@ export default function SignInPage() {
           {
             onConflict: 'user_id,is_demo',
           }
-        )
+        );
 
-        // ✅ ダッシュボードへ遷移（router.pushが効かない場合も考慮）
         try {
-          router.push('/dashboard')
+          router.push('/dashboard');
         } catch {
-          window.location.href = '/dashboard'
+          window.location.href = '/dashboard';
         }
       }
-    })
+    });
 
-    return () => subscription.unsubscribe()
-  }, [router])
+    return () => subscription.unsubscribe();
+  }, [router]);
 
   const handleEmailAuth = async () => {
     if (!email || !password) {
-      return alert('Please enter both email and password.')
+      return alert('Please enter both email and password.');
     }
 
     const result = isSignUp
       ? await supabase.auth.signUp({ email, password })
-      : await supabase.auth.signInWithPassword({ email, password })
+      : await supabase.auth.signInWithPassword({ email, password });
 
     if (result.error) {
-      alert(result.error.message)
+      alert(result.error.message);
     } else {
       alert(
         isSignUp
           ? 'Sign-up successful! Please check your email to verify.'
           : 'Login successful!'
-      )
+      );
     }
-  }
+  };
 
   const handleOAuth = async (provider: 'google') => {
     const redirectUrl =
-      process.env.NEXT_PUBLIC_REDIRECT_URL || `${window.location.origin}/signin`
+      process.env.NODE_ENV === 'development'
+        ? 'http://localhost:3000/dashboard'
+        : 'https://my-ai-coach.vercel.app/dashboard';
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
         redirectTo: redirectUrl,
       },
-    })
+    });
 
     if (error) {
-      alert('OAuth error: ' + error.message)
+      alert('OAuth error: ' + error.message);
     }
-  }
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-muted">
@@ -131,6 +131,7 @@ export default function SignInPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+
           <Button className="w-full text-center text-sm" onClick={handleEmailAuth}>
             {isSignUp ? 'Create Account' : 'Login'}
           </Button>
@@ -171,5 +172,5 @@ export default function SignInPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
