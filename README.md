@@ -115,6 +115,7 @@ npx supabase start
 
 # 5. Start development server
 npm run dev
+```
 ---
 
 ## 📄 Full Schema
