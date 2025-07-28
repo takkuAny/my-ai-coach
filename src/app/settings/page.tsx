@@ -101,6 +101,7 @@ export default function SettingsPage() {
 
     setLoading(false);
     alert('Settings saved successfully.');
+    window.dispatchEvent(new Event("profileUpdated"));
   };
 
   const handleFileChange = (file: File | null) => {

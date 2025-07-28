@@ -15,25 +15,35 @@ export function Header() {
   const [userName, setUserName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
 
-  // Fetch user profile info
+  const fetchProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("name, avatar_url")
+      .eq("id", user.id)
+      .single();
+
+    if (profile) {
+      setUserName(profile.name);
+      setAvatarUrl(profile.avatar_url);
+    }
+  };
+
   useEffect(() => {
-    const fetchProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    fetchProfile();
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("name, avatar_url")
-        .eq("id", user.id)
-        .single();
-
-      if (profile) {
-        setUserName(profile.name);
-        setAvatarUrl(profile.avatar_url);
-      }
+    // 🔄 Listen to profile update events
+    const handleProfileUpdated = () => {
+      fetchProfile(); // 再フェッチ
     };
 
-    fetchProfile();
+    window.addEventListener("profileUpdated", handleProfileUpdated);
+
+    return () => {
+      window.removeEventListener("profileUpdated", handleProfileUpdated);
+    };
   }, []);
 
   const handleLogout = async () => {
@@ -45,7 +55,6 @@ export function Header() {
     <header className="flex justify-between items-center p-4 bg-muted">
       <div className="text-xl font-bold">📘 Learning AI Coach</div>
       <div className="flex items-center gap-4">
-        {/* Name and profile image */}
         {avatarUrl && (
           <Image
             src={avatarUrl}
