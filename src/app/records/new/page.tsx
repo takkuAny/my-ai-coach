@@ -82,21 +82,34 @@ export default function RecordNewPage() {
     })();
   }, []);
 
-  const generateAIComment = async (input: RecordFormValues) => {
-    const prompt = [
-      `Date: ${input.date}`,
-      `Start: ${input.startTime} / End: ${input.endTime}`,
-      input.memo ? `Memo: ${input.memo}` : '',
-      input.pages ? `Pages Read: ${input.pages}` : '',
-      input.items ? `Items Memorized: ${input.items}` : '',
-    ]
-      .filter(Boolean)
-      .join('\n');
+  const getSubjectName = (id: string): string => {
+    const match = subjects.find((s) => s.id === id);
+    return match?.name || 'Unknown Subject';
+  };
 
-    if (!prompt.trim()) {
-      setAiComment('Insufficient information to generate AI comment.');
-      return;
+  const getAttemptLabel = (attempt: number): string => {
+    switch (attempt) {
+      case 1:
+        return 'First time';
+      case 2:
+        return 'Second time';
+      case 3:
+        return 'Third time';
+      default:
+        return `${attempt}th time`;
     }
+  };
+
+  const generateAIComment = async (input: RecordFormValues) => {
+    const subjectName = getSubjectName(input.subjectId);
+    const attemptLabel = getAttemptLabel(input.attempt);
+
+    const prompt = `
+        On ${input.date || 'an unknown date'}, you studied "${subjectName}" from ${input.startTime || '??'} to ${input.endTime || '??'}.
+        You read ${input.pages ?? 'no'} page(s) and memorized ${input.items ?? 'no'} item(s).
+        This was your ${attemptLabel}.
+        Memo: ${input.memo || 'No additional notes were provided.'}
+    `.trim();
 
     setRegenerating(true);
     try {
@@ -122,12 +135,23 @@ export default function RecordNewPage() {
 
     const { data: { user } } = await supabase.auth.getUser();
 
+    const start = new Date(`${form.date}T${form.startTime}`);
+    const end = new Date(`${form.date}T${form.endTime}`);
+    const diffMinutes = Math.floor((end.getTime() - start.getTime()) / 60000);
+
+    if (isNaN(diffMinutes) || diffMinutes <= 0) {
+      alert('Invalid time range. Please check start and end time.');
+      setLoading(false);
+      return;
+    }
+
     const { error } = await supabase.from('tasks').insert({
       subject_id: form.subjectId,
       memo: form.memo,
       date: form.date,
       start_time: form.startTime,
       end_time: form.endTime,
+      time: diffMinutes,
       pages: form.pages,
       items: form.items,
       attempt_number: form.attempt,
@@ -144,6 +168,7 @@ export default function RecordNewPage() {
 
     router.push('/records');
   };
+
 
   return (
     <div className="max-w-xl mx-auto p-4">
@@ -166,7 +191,7 @@ export default function RecordNewPage() {
 
       <div className="text-sm text-gray-600 mt-2">
         <p className="font-semibold mb-1">💬 AI Comment</p>
-        <div className="bg-gray-100 p-2 rounded min-h-[60px]">
+        <div className="bg-gray-100 p-2 rounded min-h-[60px] whitespace-pre-wrap">
           {aiComment || '(Not generated yet)'}
         </div>
 
@@ -189,16 +214,14 @@ export default function RecordNewPage() {
           Cancel
         </button>
 
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            form="record-form"
-            disabled={loading || regenerating}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-          >
-            {loading ? 'Submitting...' : 'Submit'}
-          </button>
-        </div>
+        <button
+          type="submit"
+          form="record-form"
+          disabled={loading || regenerating}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+        >
+          {loading ? 'Submitting...' : 'Submit'}
+        </button>
       </div>
     </div>
   );
