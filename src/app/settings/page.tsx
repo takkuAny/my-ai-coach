@@ -1,40 +1,42 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import Image from 'next/image'
-import { supabase } from '@/lib/supabase/client'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import { supabase } from '@/lib/supabase/client';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 
 export default function SettingsPage() {
-  const [userId, setUserId] = useState('')
+  const [userId, setUserId] = useState('');
   const [profile, setProfile] = useState({
     name: '',
     avatar_url: '',
     theme: 'system',
-  })
-  const [apiKey, setApiKey] = useState('')
-  const [avatarFile, setAvatarFile] = useState<File | null>(null)
-  const [avatarPreview, setAvatarPreview] = useState('')
-  const [loading, setLoading] = useState(false)
+  });
+  const [apiKey, setApiKey] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // Load user profile and API key
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      setUserId(user.id)
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      setUserId(user.id);
 
       const { data: profileData } = await supabase
         .from('profiles')
         .select('name, avatar_url, theme')
         .eq('id', user.id)
-        .single()
+        .single();
 
       if (profileData) {
-        setProfile(profileData)
-        setAvatarPreview(profileData.avatar_url)
+        setProfile(profileData);
+        setAvatarPreview(profileData.avatar_url);
       }
 
       const { data: keyData } = await supabase
@@ -42,35 +44,36 @@ export default function SettingsPage() {
         .select('api_key')
         .eq('user_id', user.id)
         .is('deleted_at', null)
-        .maybeSingle()
+        .maybeSingle();
 
-      if (keyData) setApiKey(keyData.api_key)
-    }
+      if (keyData) setApiKey(keyData.api_key);
+    };
 
-    load()
-  }, [])
+    load();
+  }, []);
 
   const handleSave = async () => {
-    setLoading(true)
-    let avatar_url = profile.avatar_url
+    setLoading(true);
+    let avatar_url = profile.avatar_url;
 
     if (avatarFile && userId) {
-      const ext = avatarFile.name.split('.').pop()
-      const filePath = `${userId}/avatar.${ext}`
+      const ext = avatarFile.name.split('.').pop();
+      const fileName = `${crypto.randomUUID()}.${ext}`;
+      const filePath = `${userId}/${fileName}`;
 
-      const { error } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, avatarFile, {
-          upsert: true,
+          upsert: true, // ✅ 上書き許可
           contentType: avatarFile.type,
-        })
+        });
 
-      if (!error) {
-        const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
-        avatar_url = data.publicUrl
-        setAvatarPreview(avatar_url)
+      if (!uploadError) {
+        const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        avatar_url = data.publicUrl;
+        setAvatarPreview(avatar_url);
       } else {
-        console.error('Upload error:', error)
+        console.error('Upload error:', uploadError);
       }
     }
 
@@ -81,29 +84,32 @@ export default function SettingsPage() {
         avatar_url,
         theme: profile.theme,
       })
-      .eq('id', userId)
+      .eq('id', userId);
 
     if (apiKey) {
       await supabase
         .from('api_keys')
-        .upsert({
-          user_id: userId,
-          updated_at: new Date().toISOString(),
-          updated_by: userId,
-        }, { onConflict: 'user_id' })
+        .upsert(
+          {
+            user_id: userId,
+            updated_at: new Date().toISOString(),
+            updated_by: userId,
+          },
+          { onConflict: 'user_id' }
+        );
     }
 
-    setLoading(false)
-    alert('Settings saved successfully.')
-  }
+    setLoading(false);
+    alert('Settings saved successfully.');
+  };
 
   const handleFileChange = (file: File | null) => {
-    setAvatarFile(file)
+    setAvatarFile(file);
     if (file) {
-      const previewUrl = URL.createObjectURL(file)
-      setAvatarPreview(previewUrl)
+      const previewUrl = URL.createObjectURL(file);
+      setAvatarPreview(previewUrl);
     }
-  }
+  };
 
   return (
     <main className="max-w-xl mx-auto p-6 space-y-6">
@@ -138,9 +144,13 @@ export default function SettingsPage() {
         />
       </div>
 
-      <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSave} disabled={loading}>
+      <Button
+        className="bg-blue-600 hover:bg-blue-700 text-white"
+        onClick={handleSave}
+        disabled={loading}
+      >
         {loading ? 'Saving...' : 'Save Settings'}
       </Button>
     </main>
-  )
+  );
 }
