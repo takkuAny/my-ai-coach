@@ -12,24 +12,24 @@ I created this app to solve a personal frustration: traditional study trackers o
 
 ## ✨ Features
 
-- 📅 **Flexible Scheduler**: Drag-and-drop support for both 24h view and simple ToDo tasks
-- 🧠 **AI Feedback**: Generates concise advice on your study notes using OpenAI
-- 📈 **Progress Chart**: Visualize study time trends over the past 7 days
-- 🔔 **Review Reminders**: Spaced repetition logic to detect when to review past topics
-- 🌙 **Theme Support**: Light / Dark / System theme switch
-- 🧾 **Tagging System**: Organize by category and subject
+- 📅 **Flexible Scheduler**: Drag-and-drop support for both 24h view and simple ToDo tasks  
+- 🧠 **AI Feedback**: Generates concise advice on your study notes using OpenAI  
+- 📈 **Progress Chart**: Visualize study time trends over the past 7 days  
+- 🔔 **Review Reminders**: Spaced repetition logic to detect when to review past topics  
+- 🌙 **Theme Support**: Light / Dark / System theme switch  
+- 🧾 **Tagging System**: Organize by category and subject  
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Framework**: Next.js 15 (App Router + Turbopack)
-- **Database**: Supabase (PostgreSQL)
-- **Auth**: Supabase Auth
-- **Storage**: Supabase Storage (via Edge Function)
-- **AI Integration**: OpenAI API
-- **Charts**: Recharts
-- **UI Library**: Tailwind CSS + Radix UI + shadcn/ui
+- **Framework**: Next.js 15 (App Router + Turbopack)  
+- **Database**: Supabase (PostgreSQL)  
+- **Auth**: Supabase Auth  
+- **Storage**: Supabase Storage (via Edge Function)  
+- **AI Integration**: OpenAI API  
+- **Charts**: Recharts  
+- **UI Library**: Tailwind CSS + Radix UI + shadcn/ui  
 
 ---
 
@@ -51,28 +51,42 @@ The following diagram shows the relationship between core entities such as `user
 
 ## 🧗 Challenges & Learnings
 
-- 🧩 **Nested SQL Relationships**: Handling hierarchical data (e.g., subject → category) in Supabase required custom SQL views for smoother frontend usage.
-- 🔄 **Realtime UI Sync**: Making the scheduler reflect record changes instantly demanded careful state and calendar event handling.
-- 🔐 **Secure Key Storage**: Encrypting API keys securely while managing frontend sessions involved significant architectural design with Edge Functions (in progress).
+- 🧩 **Nested SQL Relationships**: Handling hierarchical data (e.g., subject → category) in Supabase required custom SQL views for smoother frontend usage  
+- 🔄 **Realtime UI Sync**: Making the scheduler reflect record changes instantly demanded careful state and calendar event handling  
+- 🔐 **Secure Key Storage**: Encrypting API keys securely while managing frontend sessions involved significant architectural design with Edge Functions (in progress)  
 
 ---
 
 ## 📝 TODO / Future Work
 
-- [ ] **Tailwind Migration**: Some components still use legacy styles (as of 2025-07-27)
-- [ ] **Encrypted API Key Storage**: Implementation via Edge Functions pending frontend session fix
-- [ ] **i18n Support**: Currently hardcoded in English; plans to introduce multi-language support
-- [ ] **Mobile Responsiveness**: Some layouts need refinement for smaller screens
-- [ ] **Unit Tests & CI**: Jest + GitHub Actions integration is planned
-- [ ] **Soft Delete Support**: Currently records are physically deleted; consider implementing soft delete with `deleted_at` fields for better auditability and recovery
+- [ ] **Tailwind Migration**: Some components still use legacy styles (as of 2025-07-27)  
+- [ ] **Encrypted API Key Storage**: Implementation via Edge Functions pending frontend session fix  
+- [ ] **i18n Support**: Currently hardcoded in English; plans to introduce multi-language support  
+- [ ] **Mobile Responsiveness**: Some layouts need refinement for smaller screens  
+- [ ] **Unit Tests & CI**: Jest + GitHub Actions integration is planned  
+- [ ] **Soft Delete Support**: Currently records are physically deleted; consider implementing soft delete with `deleted_at` fields for better auditability and recovery  
+
 ---
+
 ## 🌐 Live Demo
 
 You can try the app here:  
-👉 **https://your-app-url.vercel.app/**
+👉 **https://my-ai-coach-pied.vercel.app/signin**
 
 No login required (Demo mode available).  
 Or, sign up and explore more features.
+
+⚠️ **Note on AI usage in demo mode:**
+
+- The **AI comment generation feature** has a shared limit of **100 requests per day** across all demo users.
+- If AI responses are not shown, it is likely the daily limit has been reached.
+- For stable access and unlimited usage, please create an account and register your own API key in the settings.
+
+💬 **Contact**  
+If you encounter issues, feel free to reach out via:  
+📧 aquarius0218tm@gmail.com  
+or open an issue at 👉 [GitHub Issues](https://github.com/takkuAny/my-ai-coach/issues)
+
 ---
 
 ## 🚀 Getting Started
