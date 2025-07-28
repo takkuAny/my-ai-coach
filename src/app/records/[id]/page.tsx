@@ -68,6 +68,24 @@ export default function RecordDetailPage() {
     setSubjects(updated);
   };
 
+  const getSubjectName = (id: string): string => {
+    const match = subjects.find((s) => s.id === id);
+    return match?.name || 'Unknown Subject';
+  };
+
+  const getAttemptLabel = (attempt: number): string => {
+    switch (attempt) {
+      case 1:
+        return 'first time';
+      case 2:
+        return 'second time';
+      case 3:
+        return 'third time';
+      default:
+        return `${attempt}th time`;
+    }
+  };
+
   useEffect(() => {
     const fetchRecord = async () => {
       const loadedSubjects = await fetchSubjects();
@@ -156,19 +174,18 @@ export default function RecordDetailPage() {
   const regenerateAIComment = async () => {
     if (!initialValues) return;
 
-    const { date, startTime, endTime, memo, pages, items } = initialValues;
+    const { date, startTime, endTime, memo, pages, items, attempt, subjectId } = initialValues;
+    const subjectName = getSubjectName(subjectId);
+    const attemptLabel = getAttemptLabel(attempt);
 
-    const prompt = [
-      `Date: ${date}`,
-      `Start: ${startTime} / End: ${endTime}`,
-      memo ? `Memo: ${memo}` : '',
-      pages ? `Pages read: ${pages}` : '',
-      items ? `Items learned: ${items}` : '',
-    ]
-      .filter(Boolean)
-      .join('\n');
+    const prompt = `
+On ${date || 'an unknown date'}, you studied "${subjectName}" from ${startTime || '??'} to ${endTime || '??'}.
+You read ${pages ?? 'no'} page(s) and memorized ${items ?? 'no'} item(s).
+This was your ${attemptLabel}.
+Memo: ${memo || 'No additional notes were provided.'}
+    `.trim();
 
-    if (!prompt.trim()) {
+    if (!prompt) {
       setAiComment('Insufficient data to generate AI comment.');
       return;
     }

@@ -7,10 +7,11 @@ export function isDueForReview(dateStr: string, attempt: number): boolean {
   const reviewDate = new Date(dateStr);
   reviewDate.setDate(reviewDate.getDate() + scheduleDays);
 
-  const reviewDateStr = reviewDate.toISOString().slice(0, 10); // 'YYYY-MM-DD'
-  const todayStr = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+  // 日付文字列で00:00にして比較
+  const review = new Date(reviewDate.toISOString().slice(0, 10));
+  const today = new Date(new Date().toISOString().slice(0, 10));
 
-  return reviewDateStr === todayStr;
+  return review <= today;
 }
 
 export function getReviewLabel(attempt: number): string {
