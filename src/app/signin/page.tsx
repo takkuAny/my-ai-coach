@@ -93,24 +93,6 @@ export default function SignInPage() {
     }
   };
 
-  const handleOAuth = async (provider: 'google') => {
-    const redirectUrl =
-      process.env.NODE_ENV === 'development'
-        ? 'http://localhost:3000/dashboard'
-        : 'https://my-ai-coach.vercel.app/dashboard';
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: redirectUrl,
-      },
-    });
-
-    if (error) {
-      alert('OAuth error: ' + error.message);
-    }
-  };
-
   return (
     <div className="flex items-center justify-center min-h-screen bg-muted">
       <Card className="w-full max-w-sm shadow-md">
@@ -132,7 +114,7 @@ export default function SignInPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
 
-          <Button className="w-full text-center text-sm" onClick={handleEmailAuth}>
+          <Button className="w-full text-blue-600 underline" onClick={handleEmailAuth}>
             {isSignUp ? 'Create Account' : 'Login'}
           </Button>
 
@@ -158,16 +140,6 @@ export default function SignInPage() {
                 </button>
               </>
             )}
-          </div>
-
-          <div className="border-t pt-4 space-y-2">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => handleOAuth('google')}
-            >
-              <FcGoogle className="mr-2 h-4 w-4" /> Sign in with Google
-            </Button>
           </div>
         </CardContent>
       </Card>
