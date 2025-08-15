@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { FcGoogle } from 'react-icons/fc';
 import { supabase } from '@/lib/supabase/client';
 
 function getOrGenerateClientId(): string {
@@ -22,74 +21,89 @@ export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-
-  useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        const user = session.user;
-
-        // Create profile if not exists
-        const { data: existing } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', user.id)
-          .single();
-
-        if (!existing) {
-          await supabase.from('profiles').insert({
-            id: user.id,
-            email: user.email,
-            name: user.user_metadata.full_name ?? '',
-            avatar_url: user.user_metadata.avatar_url ?? '',
-          });
-        }
-
-        // DEMO API key registration
-        const clientId = getOrGenerateClientId();
-        await supabase.from('api_keys').upsert(
-          {
-            user_id: user.id,
-            provider: 'OpenAI',
-            api_key: 'DEMO_KEY_USED_BY_ALL',
-            is_demo: true,
-            mac_address: clientId,
-            created_by: user.id,
-          },
-          {
-            onConflict: 'user_id,is_demo',
-          }
-        );
-
-        try {
-          router.push('/dashboard');
-        } catch {
-          window.location.href = '/dashboard';
-        }
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [router]);
+  const [loading, setLoading] = useState(false);
 
   const handleEmailAuth = async () => {
     if (!email || !password) {
-      return alert('Please enter both email and password.');
+      alert('Please enter both email and password.');
+      return;
     }
 
-    const result = isSignUp
-      ? await supabase.auth.signUp({ email, password })
-      : await supabase.auth.signInWithPassword({ email, password });
+    try {
+      setLoading(true);
 
-    if (result.error) {
-      alert(result.error.message);
-    } else {
-      alert(
-        isSignUp
-          ? 'Sign-up successful! Please check your email to verify.'
-          : 'Login successful!'
+      // サインアップ or ログイン
+      const result = isSignUp
+        ? await supabase.auth.signUp({ email, password })
+        : await supabase.auth.signInWithPassword({ email, password });
+
+      if (result.error) {
+        alert(result.error.message);
+        return;
+      }
+
+      // サインアップの場合、メール確認が有効だと即セッションはできません
+      if (isSignUp) {
+        const { data } = await supabase.auth.getSession();
+        if (!data.session) {
+          alert('Sign-up successful! Please check your email to verify.');
+          return;
+        }
+      }
+
+      // セッションを明示的に同期（Cookie付与を確実に）
+      const { data: sessionRes, error: sErr } = await supabase.auth.getSession();
+      if (sErr || !sessionRes.session) {
+        alert('Login succeeded, but session not found. Please try again.');
+        return;
+      }
+
+      const user = sessionRes.session.user;
+
+      // プロフィールの作成（無ければ）
+      const { data: existing, error: exErr } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (exErr) {
+        console.warn('profiles check error:', exErr);
+      }
+
+      if (!existing) {
+        const { error: insErr } = await supabase.from('profiles').insert({
+          id: user.id,
+          email: user.email,
+          name: user.user_metadata?.full_name ?? '',
+          avatar_url: user.user_metadata?.avatar_url ?? '',
+        });
+        if (insErr) console.warn('profiles insert error:', insErr);
+      }
+
+      // DEMO API key の事前登録（Upsert）
+      const clientId = getOrGenerateClientId();
+      const { error: upErr } = await supabase.from('api_keys').upsert(
+        {
+          user_id: user.id,
+          provider: 'OpenAI',
+          api_key: 'DEMO_KEY_USED_BY_ALL',
+          is_demo: true,
+          mac_address: clientId,
+          created_by: user.id,
+        },
+        { onConflict: 'user_id,is_demo' }
       );
+      if (upErr) console.warn('api_keys upsert error:', upErr);
+
+      // ここまで来たら Cookie（sb-…-auth-token）が付いているはず
+      try {
+        router.push('/dashboard');
+      } catch {
+        window.location.href = '/dashboard';
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -114,8 +128,14 @@ export default function SignInPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
 
-          <Button className="w-full text-blue-600 underline" onClick={handleEmailAuth}>
-            {isSignUp ? 'Create Account' : 'Login'}
+          <Button
+            className="w-full"
+            onClick={handleEmailAuth}
+            disabled={loading}
+          >
+            {loading
+              ? (isSignUp ? 'Creating…' : 'Signing in…')
+              : (isSignUp ? 'Create Account' : 'Login')}
           </Button>
 
           <div className="text-center text-sm">

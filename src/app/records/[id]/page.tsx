@@ -1,278 +1,197 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
-import { RecordForm } from '@/components/recordsform';
 
-interface Subject {
+/** 必要に応じて調整してください（テーブル/カラム名） */
+type TaskRow = {
   id: string;
-  name: string;
-  category: {
-    name: string;
-    color: string;
-  };
-}
-
-type RawSubject = {
-  id: string;
-  name: string;
-  category_name: string;
-  category_color: string;
-};
-
-type RecordFormValues = {
-  subjectId: string;
-  memo: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  pages?: number;
-  items?: number;
-  attempt: number;
+  date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  memo: string | null;
+  pages: number | null;
+  items: number | null;
+  attempt: number | null;
+  subject_id: string | null;
+  ai_comment: string | null;
 };
 
 export default function RecordDetailPage() {
   const router = useRouter();
-  const params = useParams();
+  const params = useParams<{ id: string }>();
   const id = params?.id as string;
 
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [initialValues, setInitialValues] = useState<RecordFormValues | null>(null);
-  const [aiComment, setAiComment] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
+  const [task, setTask] = useState<TaskRow | null>(null);
+  const [subjectName, setSubjectName] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [regenLoading, setRegenLoading] = useState(false);
+  const [aiComment, setAiComment] = useState<string>('');
 
-  const fetchSubjects = async (): Promise<Subject[]> => {
-    const { data, error } = await supabase
-      .from('subject_with_category')
-      .select('*');
-
-    if (error || !data) {
-      console.error('Failed to fetch subjects:', error?.message);
-      return [];
-    }
-
-    return data.map((item: RawSubject) => ({
-      id: item.id,
-      name: item.name,
-      category: {
-        name: item.category_name,
-        color: item.category_color,
-      },
-    }));
-  };
-
-  const refreshSubjects = async () => {
-    const updated = await fetchSubjects();
-    setSubjects(updated);
-  };
-
-  const getSubjectName = (id: string): string => {
-    const match = subjects.find((s) => s.id === id);
-    return match?.name || 'Unknown Subject';
-  };
-
-  const getAttemptLabel = (attempt: number): string => {
-    switch (attempt) {
-      case 1:
-        return 'first time';
-      case 2:
-        return 'second time';
-      case 3:
-        return 'third time';
-      default:
-        return `${attempt}th time`;
-    }
-  };
-
+  // 初期データのロード
   useEffect(() => {
-    const fetchRecord = async () => {
-      const loadedSubjects = await fetchSubjects();
-      setSubjects(loadedSubjects);
+    const run = async () => {
+      if (!id) return;
 
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('id', id)
-        .single();
+      setLoading(true);
+      try {
+        const { data: row, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle<TaskRow>();
+        if (error) throw error;
+        if (!row) return;
 
-      if (error || !data) {
-        console.error('Failed to fetch record:', error?.message);
+        setTask(row);
+        setAiComment(row.ai_comment ?? '');
+
+        if (row.subject_id) {
+          const { data: subj, error: se } = await supabase
+            .from('subjects')
+            .select('name')
+            .eq('id', row.subject_id)
+            .maybeSingle<{ name: string }>();
+          if (!se && subj?.name) setSubjectName(subj.name);
+        }
+      } catch (e) {
+        console.error('load error:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    run();
+  }, [id]);
+
+  // 表示用のラベル
+  const attemptLabel = useMemo(() => {
+    const n = task?.attempt ?? 0;
+    if (!n) return 'first attempt';
+    if (n === 1) return 'second attempt';
+    if (n === 2) return 'third attempt';
+    return `${n + 1}th attempt`;
+  }, [task?.attempt]);
+
+  // AIコメントの再生成（ここが今回の肝）
+  const regenerateAIComment = async () => {
+    if (!task) return;
+
+    const prompt = `
+On ${task.date ?? 'an unknown date'}, you studied "${subjectName || 'Unknown subject'}" from ${task.start_time ?? '??'} to ${task.end_time ?? '??'}.
+You read ${task.pages ?? 0} page(s) and memorized ${task.items ?? 0} item(s).
+This was your ${attemptLabel}.
+Memo: ${task.memo || 'No additional notes were provided.'}
+    `.trim();
+
+    setRegenLoading(true);
+    try {
+      // 1) アクセストークン取得
+      const { data: sessionRes } = await supabase.auth.getSession();
+      const accessToken = sessionRes.session?.access_token ?? '';
+
+      // 2) Cookie + Authorization の二段構えで API へ
+      const res = await fetch('/api/gpt-comment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({ memo: prompt }),
+        credentials: 'include',
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        console.error('gpt-comment error:', json);
+        setAiComment('Failed to generate AI comment.');
         return;
       }
 
-      setInitialValues({
-        subjectId: data.subject_id,
-        memo: data.memo ?? '',
-        date: data.date ?? '',
-        startTime: data.start_time ?? '',
-        endTime: data.end_time ?? '',
-        pages: data.pages ?? undefined,
-        items: data.items ?? undefined,
-        attempt: data.attempt_number ?? 1,
-      });
-
-      setAiComment(data.ai_comment ?? '');
-    };
-
-    fetchRecord();
-  }, [id]);
-
-  const handleUpdate = async (form: RecordFormValues) => {
-    setLoading(true);
-
-    const start = new Date(`${form.date}T${form.startTime}`);
-    const end = new Date(`${form.date}T${form.endTime}`);
-    const diffMinutes = Math.floor((end.getTime() - start.getTime()) / 60000);
-
-    if (isNaN(diffMinutes) || diffMinutes <= 0) {
-      alert('Please check the time input.');
-      setLoading(false);
-      return;
-    }
-
-    const { error } = await supabase
-      .from('tasks')
-      .update({
-        subject_id: form.subjectId,
-        memo: form.memo,
-        date: form.date,
-        start_time: form.startTime,
-        end_time: form.endTime,
-        time: diffMinutes,
-        pages: form.pages,
-        items: form.items,
-        attempt_number: form.attempt,
-      })
-      .eq('id', id);
-
-    setLoading(false);
-
-    if (error) {
-      alert('Failed to update: ' + error.message);
-    } else {
-      router.push('/records');
-    }
-  };
-
-  const handleDelete = async () => {
-    if (loading || regenerating) return;
-
-    const confirmDelete = confirm('Are you sure you want to delete this record?');
-    if (!confirmDelete) return;
-
-    const { error } = await supabase.from('tasks').delete().eq('id', id);
-
-    if (error) {
-      alert('Failed to delete: ' + error.message);
-    } else {
-      router.push('/records');
-    }
-  };
-
-  const regenerateAIComment = async () => {
-    if (!initialValues) return;
-
-    const { date, startTime, endTime, memo, pages, items, attempt, subjectId } = initialValues;
-    const subjectName = getSubjectName(subjectId);
-    const attemptLabel = getAttemptLabel(attempt);
-
-    const prompt = `
-On ${date || 'an unknown date'}, you studied "${subjectName}" from ${startTime || '??'} to ${endTime || '??'}.
-You read ${pages ?? 'no'} page(s) and memorized ${items ?? 'no'} item(s).
-This was your ${attemptLabel}.
-Memo: ${memo || 'No additional notes were provided.'}
-    `.trim();
-
-    if (!prompt) {
-      setAiComment('Insufficient data to generate AI comment.');
-      return;
-    }
-
-    setRegenerating(true);
-    try {
-      const res = await fetch('/api/gpt-comment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memo: prompt }),
-      });
-
-      const result = await res.json();
-      const comment = result.comment ?? 'Failed to generate AI comment.';
-
+      const comment: string =
+        json?.comment ??
+        `AI comment generated. (usage_total: ${json?.usage_total ?? 'n/a'})`;
       setAiComment(comment);
-      await supabase.from('tasks').update({ ai_comment: comment }).eq('id', id);
-    } catch (err) {
-      console.error('Error regenerating AI comment:', err);
+
+      // 3) DB 更新
+      const { error: upErr } = await supabase
+        .from('tasks')
+        .update({ ai_comment: comment })
+        .eq('id', task.id);
+      if (upErr) console.warn('update ai_comment error:', upErr);
+    } catch (e) {
+      console.error('regenerate error:', e);
       setAiComment('Failed to generate AI comment.');
     } finally {
-      setRegenerating(false);
+      setRegenLoading(false);
     }
   };
 
-  if (!initialValues) {
-    return <div className="p-6">Loading...</div>;
-  }
+  // 手動保存（任意）
+  const save = async () => {
+    if (!task) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ ai_comment: aiComment })
+        .eq('id', task.id);
+      if (error) throw error;
+    } catch (e) {
+      console.error('save error:', e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="p-6">Loading…</div>;
+  if (!task) return <div className="p-6">Record not found.</div>;
 
   return (
-    <main className="max-w-xl mx-auto p-6">
-      <h1 className="text-xl font-bold mb-4">Record Details</h1>
+    <div className="max-w-3xl mx-auto p-6 space-y-6">
+      <button
+        className="text-sm underline"
+        onClick={() => router.back()}
+      >
+        ← Back
+      </button>
 
-      <RecordForm
-        onSubmit={handleUpdate}
-        initialValues={initialValues}
-        subjects={subjects}
-        subjectId={initialValues.subjectId}
-        setSubjectId={(id: string) =>
-          setInitialValues((prev) =>
-            prev ? { ...prev, subjectId: id } : null
-          )
-        }
-        loading={loading || regenerating}
-        isEditing
-        aiComment={aiComment}
-        onSubjectRefresh={refreshSubjects}
-      />
+      <h1 className="text-2xl font-semibold">Record Detail</h1>
 
-      <div className="text-sm text-gray-600 mt-2">
-        <button
-          onClick={regenerateAIComment}
-          disabled={regenerating}
-          className="text-blue-600 underline hover:text-blue-800"
-        >
-          {regenerating ? 'Generating AI comment…' : 'Regenerate AI comment'}
-        </button>
+      <div className="grid grid-cols-2 gap-4">
+        <div><span className="font-medium">Subject:</span> {subjectName || '(unknown)'}</div>
+        <div><span className="font-medium">Date:</span> {task.date ?? '-'}</div>
+        <div><span className="font-medium">Time:</span> {task.start_time ?? '??'} - {task.end_time ?? '??'}</div>
+        <div><span className="font-medium">Pages:</span> {task.pages ?? 0}</div>
+        <div><span className="font-medium">Items:</span> {task.items ?? 0}</div>
+        <div><span className="font-medium">Attempt:</span> {attemptLabel}</div>
       </div>
 
-      <div className="flex justify-between mt-6">
-        <button
-          type="button"
-          onClick={() => router.push('/records')}
-          disabled={regenerating}
-          className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 transition"
-        >
-          Cancel
-        </button>
-
-        <div className="flex gap-4">
+      <div className="space-y-2">
+        <label className="font-medium">AI Comment</label>
+        <textarea
+          className="w-full border rounded p-3 min-h-[160px]"
+          value={aiComment}
+          onChange={(e) => setAiComment(e.target.value)}
+        />
+        <div className="flex gap-3">
           <button
-            onClick={handleDelete}
-            disabled={regenerating}
-            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+            onClick={regenerateAIComment}
+            className="px-4 py-2 rounded bg-black text-white disabled:opacity-60"
+            disabled={regenLoading}
           >
-            Delete
+            {regenLoading ? 'Generating…' : 'Regenerate with AI'}
           </button>
           <button
-            type="submit"
-            form="record-form"
-            disabled={loading || regenerating}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+            onClick={save}
+            className="px-4 py-2 rounded border disabled:opacity-60"
+            disabled={saving}
           >
-            {loading ? 'Updating…' : 'Update'}
+            {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
