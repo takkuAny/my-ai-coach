@@ -117,6 +117,7 @@ export default function RecordNewPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memo: prompt }),
+        credentials: 'include',
       });
 
       const result = await res.json();

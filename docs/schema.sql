@@ -201,3 +201,75 @@ from
   tasks t
   join subjects s on t.subject_id = s.id
   left join categories c on s.category_id = c.id;
+
+
+---
+-- 0) スキーマ & テーブル（未作成なら）
+create schema if not exists app;
+
+create table if not exists app.api_usage (
+  id          text primary key,      -- 'global' を1行だけ使う
+  usage_count integer not null default 0,
+  updated_at  timestamptz not null default now(),
+  deleted_at  timestamptz
+);
+
+-- RLS: 直接アクセスを塞ぐ（ポリシー無し＝全拒否）
+alter table app.api_usage enable row level security;
+-- 1) 以前の古い関数シグネチャを消す（あれば）
+drop function if exists public.increment_usage(integer);
+-- 2) 必ず1行を返す increment_usage（今回の修正版）
+create or replace function public.increment_usage(
+  p_delta integer default 1,
+  p_max   integer default 100
+)
+returns table(ok boolean, new_total integer)
+language plpgsql
+security definer
+set search_path = public, app
+as $$
+declare
+  v_total integer;
+begin
+  -- 対象行をロック。無ければ初期化
+  perform 1 from app.api_usage where id = 'global' for update;
+  if not found then
+    insert into app.api_usage(id, usage_count) values ('global', 0);
+  end if;
+
+  -- 上限チェック込みで更新
+  update app.api_usage
+     set usage_count = usage_count + p_delta,
+         updated_at  = now()
+   where id = 'global'
+     and usage_count + p_delta <= p_max
+  returning usage_count into v_total;
+
+  if found then
+    -- 更新成功（上限未満）
+    return query select true, v_total;
+  else
+    -- 上限到達：現在値を返す
+    select usage_count into v_total from app.api_usage where id = 'global';
+    return query select false, v_total;
+  end if;
+end;
+$$;
+
+-- 認証ユーザーのみ実行可（匿名は不可）
+grant execute on function public.increment_usage(int, int) to authenticated;
+revoke execute on function public.increment_usage(int, int) from anon;
+
+-- 3) （任意）合計取得のヘルパー
+create or replace function public.get_usage_total()
+returns integer
+language sql
+security definer
+set search_path = public, app
+as $$
+  select coalesce((select usage_count from app.api_usage where id = 'global'), 0);
+$$;
+
+grant execute on function public.get_usage_total() to authenticated;  -- 必要なら anon にも
+-- 4) （テスト用）カウンタをリセットしたいとき
+update app.api_usage set usage_count = 0 where id = 'global';
